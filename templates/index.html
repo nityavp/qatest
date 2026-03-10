@@ -1,0 +1,465 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>QATest — AI-Powered QA Testing</title>
+<style>
+:root {
+    --bg: #f1f5f9;
+    --card: #ffffff;
+    --text: #1e293b;
+    --text2: #64748b;
+    --text3: #94a3b8;
+    --border: #e2e8f0;
+    --primary: #3b82f6;
+    --primary-dark: #2563eb;
+    --green: #22c55e;
+    --red: #ef4444;
+    --orange: #f97316;
+    --yellow: #eab308;
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.6;
+    min-height: 100vh;
+}
+
+/* Header */
+.header {
+    background: linear-gradient(135deg, #0f172a 0%, #1e3a5f 50%, #1e40af 100%);
+    color: white;
+    padding: 48px 24px;
+    text-align: center;
+}
+.header h1 { font-size: 32px; font-weight: 800; margin-bottom: 8px; }
+.header p { font-size: 16px; opacity: 0.7; max-width: 500px; margin: 0 auto; }
+
+/* Container */
+.container { max-width: 720px; margin: -40px auto 40px; padding: 0 16px; position: relative; z-index: 1; }
+
+/* Card */
+.card {
+    background: var(--card);
+    border-radius: 16px;
+    box-shadow: 0 4px 24px rgba(0,0,0,0.08);
+    padding: 32px;
+    margin-bottom: 20px;
+}
+
+/* Form */
+.form-group { margin-bottom: 20px; }
+.form-group label { display: block; font-size: 13px; font-weight: 600; color: var(--text2); margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.5px; }
+.input-row { display: flex; gap: 12px; }
+.input-row input[type="url"],
+.input-row input[type="text"] {
+    flex: 1;
+    padding: 14px 18px;
+    border: 2px solid var(--border);
+    border-radius: 12px;
+    font-size: 16px;
+    outline: none;
+    transition: border-color 0.2s;
+}
+.input-row input:focus { border-color: var(--primary); }
+input[type="number"] {
+    width: 80px;
+    padding: 14px 12px;
+    border: 2px solid var(--border);
+    border-radius: 12px;
+    font-size: 16px;
+    outline: none;
+    text-align: center;
+}
+input[type="number"]:focus { border-color: var(--primary); }
+
+.btn {
+    padding: 14px 32px;
+    border: none;
+    border-radius: 12px;
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+.btn-primary {
+    background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+    color: white;
+    box-shadow: 0 4px 12px rgba(59,130,246,0.4);
+}
+.btn-primary:hover { transform: translateY(-1px); box-shadow: 0 6px 16px rgba(59,130,246,0.5); }
+.btn-primary:disabled { opacity: 0.5; cursor: not-allowed; transform: none; box-shadow: none; }
+
+/* Baseline upload */
+.baseline-area {
+    border: 2px dashed var(--border);
+    border-radius: 12px;
+    padding: 16px;
+    text-align: center;
+    cursor: pointer;
+    transition: border-color 0.2s;
+    font-size: 14px;
+    color: var(--text2);
+}
+.baseline-area:hover { border-color: var(--primary); }
+.baseline-area.has-file { border-color: var(--green); background: #f0fdf4; color: var(--text); }
+
+/* Options row */
+.options-row { display: flex; gap: 24px; align-items: end; flex-wrap: wrap; }
+
+/* Progress */
+.progress-area { display: none; }
+.progress-area.active { display: block; }
+
+.steps { display: flex; gap: 0; margin-bottom: 20px; }
+.step {
+    flex: 1;
+    text-align: center;
+    padding: 12px 8px;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text3);
+    position: relative;
+}
+.step::after {
+    content: '';
+    position: absolute;
+    bottom: 0; left: 0; right: 0;
+    height: 3px;
+    background: var(--border);
+    border-radius: 2px;
+}
+.step.active { color: var(--primary); }
+.step.active::after { background: var(--primary); }
+.step.done { color: var(--green); }
+.step.done::after { background: var(--green); }
+
+.log-box {
+    background: #0f172a;
+    color: #a5f3fc;
+    border-radius: 12px;
+    padding: 16px 20px;
+    font-family: 'SF Mono', 'Fira Code', monospace;
+    font-size: 13px;
+    line-height: 1.8;
+    max-height: 280px;
+    overflow-y: auto;
+    white-space: pre-wrap;
+}
+.log-box .log-line { opacity: 0.7; }
+.log-box .log-line:last-child { opacity: 1; }
+
+/* Spinner */
+.spinner {
+    display: inline-block;
+    width: 18px; height: 18px;
+    border: 2.5px solid var(--border);
+    border-top-color: var(--primary);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+    vertical-align: middle;
+    margin-right: 8px;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* Results */
+.results-area { display: none; }
+.results-area.active { display: block; }
+
+.score-reveal {
+    text-align: center;
+    padding: 24px;
+    animation: fadeInUp 0.6s ease;
+}
+@keyframes fadeInUp {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.score-circle {
+    width: 140px; height: 140px;
+    border-radius: 50%;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 48px;
+    font-weight: 800;
+    margin-bottom: 12px;
+}
+.score-label { font-size: 14px; color: var(--text2); }
+
+.stats-row { display: flex; gap: 16px; justify-content: center; margin: 20px 0; flex-wrap: wrap; }
+.stat { text-align: center; padding: 12px 20px; background: var(--bg); border-radius: 10px; }
+.stat-value { font-size: 22px; font-weight: 700; }
+.stat-label { font-size: 11px; color: var(--text3); text-transform: uppercase; }
+
+.cat-scores { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin: 20px 0; }
+.cat-score { background: var(--bg); border-radius: 10px; padding: 12px 16px; }
+.cat-score-header { display: flex; justify-content: space-between; font-size: 13px; font-weight: 600; margin-bottom: 6px; }
+.cat-bar { height: 5px; background: var(--border); border-radius: 3px; overflow: hidden; }
+.cat-bar-fill { height: 100%; border-radius: 3px; }
+
+.action-btns { display: flex; gap: 12px; justify-content: center; margin-top: 24px; flex-wrap: wrap; }
+.btn-outline {
+    padding: 12px 24px;
+    border: 2px solid var(--border);
+    border-radius: 12px;
+    background: transparent;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    color: var(--text);
+    transition: all 0.2s;
+}
+.btn-outline:hover { border-color: var(--primary); color: var(--primary); }
+
+/* Error */
+.error-msg { background: #fef2f2; color: var(--red); border-radius: 12px; padding: 16px; text-align: center; font-weight: 600; display: none; }
+.error-msg.active { display: block; }
+</style>
+</head>
+<body>
+
+<div class="header">
+    <h1>QATest</h1>
+    <p>AI-powered end-to-end quality assurance testing. Enter a URL and get a comprehensive report in minutes.</p>
+</div>
+
+<div class="container">
+
+    <!-- INPUT FORM -->
+    <div class="card" id="formCard">
+        <div class="form-group">
+            <label>Website URL</label>
+            <div class="input-row">
+                <input type="url" id="urlInput" placeholder="https://yoursite.com" autofocus>
+            </div>
+        </div>
+
+        <div class="options-row">
+            <div class="form-group" style="flex:0 0 auto">
+                <label>Max Pages</label>
+                <input type="number" id="maxPages" value="10" min="1" max="50">
+            </div>
+            <div class="form-group" style="flex:1">
+                <label>Baseline (Run 2 — optional)</label>
+                <div class="baseline-area" id="baselineArea" onclick="document.getElementById('baselineFile').click()">
+                    Drop or click to upload previous <strong>baseline.json</strong>
+                </div>
+                <input type="file" id="baselineFile" accept=".json" style="display:none">
+            </div>
+        </div>
+
+        <div style="text-align:center;margin-top:8px">
+            <button class="btn btn-primary" id="startBtn" onclick="startTest()">Start QA Test</button>
+        </div>
+    </div>
+
+    <!-- PROGRESS -->
+    <div class="card progress-area" id="progressArea">
+        <div class="steps">
+            <div class="step" id="step1">1. Crawl</div>
+            <div class="step" id="step2">2. Analyse</div>
+            <div class="step" id="step3">3. Score</div>
+            <div class="step" id="step4">4. Report</div>
+        </div>
+        <div class="log-box" id="logBox"></div>
+    </div>
+
+    <!-- ERROR -->
+    <div class="error-msg" id="errorMsg"></div>
+
+    <!-- RESULTS -->
+    <div class="card results-area" id="resultsArea">
+        <div class="score-reveal">
+            <div class="score-circle" id="scoreCircle">—</div>
+            <div class="score-label">Product Readiness Score</div>
+        </div>
+
+        <div class="stats-row">
+            <div class="stat">
+                <div class="stat-value" id="statPages">—</div>
+                <div class="stat-label">Pages Tested</div>
+            </div>
+            <div class="stat">
+                <div class="stat-value" id="statIssues">—</div>
+                <div class="stat-label">Issues Found</div>
+            </div>
+        </div>
+
+        <div class="cat-scores" id="catScores"></div>
+
+        <div class="action-btns">
+            <a class="btn btn-primary" id="viewReportBtn" href="#" target="_blank">View Full Report</a>
+            <a class="btn-outline" id="downloadBaselineBtn" href="#" download="baseline.json">Download Baseline (for Run 2)</a>
+            <button class="btn-outline" onclick="resetForm()">Test Another Site</button>
+        </div>
+    </div>
+
+</div>
+
+<script>
+let baselineJson = null;
+
+// Baseline file upload
+document.getElementById('baselineFile').addEventListener('change', function(e) {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = function(ev) {
+        baselineJson = ev.target.result;
+        const area = document.getElementById('baselineArea');
+        area.textContent = '✓ ' + file.name + ' loaded';
+        area.classList.add('has-file');
+    };
+    reader.readAsText(file);
+});
+
+function addLog(msg) {
+    const box = document.getElementById('logBox');
+    const line = document.createElement('div');
+    line.className = 'log-line';
+    line.textContent = msg;
+    box.appendChild(line);
+    box.scrollTop = box.scrollHeight;
+}
+
+function setStep(n) {
+    for (let i = 1; i <= 4; i++) {
+        const el = document.getElementById('step' + i);
+        el.classList.remove('active', 'done');
+        if (i < n) el.classList.add('done');
+        if (i === n) el.classList.add('active');
+    }
+}
+
+function scoreColor(s) {
+    if (s >= 80) return '#22c55e';
+    if (s >= 60) return '#eab308';
+    if (s >= 40) return '#f97316';
+    return '#ef4444';
+}
+
+async function startTest() {
+    const url = document.getElementById('urlInput').value.trim();
+    if (!url) { document.getElementById('urlInput').focus(); return; }
+
+    const maxPages = document.getElementById('maxPages').value;
+
+    // Show progress, hide form
+    document.getElementById('startBtn').disabled = true;
+    document.getElementById('progressArea').classList.add('active');
+    document.getElementById('resultsArea').classList.remove('active');
+    document.getElementById('errorMsg').classList.remove('active');
+    document.getElementById('logBox').innerHTML = '';
+    setStep(1);
+    addLog('Starting test for ' + url + '...');
+
+    // Start test
+    const body = { url, max_pages: maxPages };
+    if (baselineJson) body.baseline_json = baselineJson;
+
+    let resp;
+    try {
+        resp = await fetch('/start-test', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify(body)
+        });
+    } catch (e) {
+        showError('Could not connect to server.');
+        return;
+    }
+
+    const { task_id, error } = await resp.json();
+    if (error) { showError(error); return; }
+
+    // Listen for progress via SSE
+    const evtSource = new EventSource('/progress/' + task_id);
+    evtSource.onmessage = function(event) {
+        const data = JSON.parse(event.data);
+
+        if (data.type === 'step') {
+            setStep(data.step);
+            addLog(data.message);
+        } else if (data.type === 'progress') {
+            addLog(data.message);
+        } else if (data.type === 'done') {
+            evtSource.close();
+            setStep(5); // All done
+            addLog('✓ Report generated!');
+            showResults(data);
+        } else if (data.type === 'error') {
+            evtSource.close();
+            showError(data.message);
+        }
+    };
+
+    evtSource.onerror = function() {
+        evtSource.close();
+    };
+}
+
+function showError(msg) {
+    document.getElementById('startBtn').disabled = false;
+    const el = document.getElementById('errorMsg');
+    el.textContent = 'Error: ' + msg;
+    el.classList.add('active');
+}
+
+function showResults(data) {
+    document.getElementById('resultsArea').classList.add('active');
+
+    const sc = data.score;
+    const circle = document.getElementById('scoreCircle');
+    circle.textContent = sc;
+    circle.style.border = '6px solid ' + scoreColor(sc);
+    circle.style.color = scoreColor(sc);
+
+    document.getElementById('statPages').textContent = data.pages_tested;
+    document.getElementById('statIssues').textContent = data.total_issues;
+
+    // Category scores
+    const catEl = document.getElementById('catScores');
+    catEl.innerHTML = '';
+    const labels = {functional:'Functional',security:'Security',usability:'Usability',visual:'Visual',accessibility:'Accessibility',content:'Content'};
+    for (const [cat, score] of Object.entries(data.categories)) {
+        const c = scoreColor(score);
+        catEl.innerHTML += `
+            <div class="cat-score">
+                <div class="cat-score-header">
+                    <span>${labels[cat] || cat}</span>
+                    <span style="color:${c}">${score}</span>
+                </div>
+                <div class="cat-bar"><div class="cat-bar-fill" style="width:${score}%;background:${c}"></div></div>
+            </div>`;
+    }
+
+    document.getElementById('viewReportBtn').href = data.report_url;
+    document.getElementById('downloadBaselineBtn').href = data.baseline_url;
+}
+
+function resetForm() {
+    document.getElementById('startBtn').disabled = false;
+    document.getElementById('progressArea').classList.remove('active');
+    document.getElementById('resultsArea').classList.remove('active');
+    document.getElementById('errorMsg').classList.remove('active');
+    document.getElementById('urlInput').value = '';
+    document.getElementById('urlInput').focus();
+    baselineJson = null;
+    const area = document.getElementById('baselineArea');
+    area.innerHTML = 'Drop or click to upload previous <strong>baseline.json</strong>';
+    area.classList.remove('has-file');
+}
+
+// Enter key to start
+document.getElementById('urlInput').addEventListener('keydown', function(e) {
+    if (e.key === 'Enter') startTest();
+});
+</script>
+
+</body>
+</html>
