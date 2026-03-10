@@ -61,26 +61,35 @@ async def run(args):
     print(f"  Found {len(findings)} issue(s)")
     print()
 
-    # Step 3: User journeys
-    print("[3/6] Testing user journeys...")
-    journey_results = []
-    if api_key:
-        journey_results = await run_journeys(
-            site_data, api_key, args.email or "", args.password or "", on_progress=log
-        )
-        for jr in journey_results:
-            if not jr.overall_success:
-                failed = next((s for s in jr.steps if not s.success), None)
-                findings.append(Finding(
-                    id=f"journey-fail-{jr.journey_type}",
-                    category="journey", severity="critical",
-                    title=f"{jr.journey_name} — Journey Failed",
-                    description=f"Failed at step {failed.step_number}: {failed.error_message}" if failed else "Journey could not be completed.",
-                    location=jr.start_url, impact=f"Users cannot complete {jr.journey_type}.",
-                    suggestion="Fix the failing step.", source="journey",
-                ))
-    else:
-        print("  Skipping (no GEMINI_API_KEY)")
+    # Step 3: User journeys (buttons + AI-guided)
+    print("[3/6] Testing buttons & user journeys...")
+    import hashlib
+    journey_results = await run_journeys(
+        site_data, api_key, args.email or "", args.password or "", on_progress=log
+    )
+    for jr in journey_results:
+        if jr.journey_type == "button_test":
+            for step in jr.steps:
+                if not step.success:
+                    findings.append(Finding(
+                        id=f"btn-err-{hashlib.md5((step.value + step.url_before).encode()).hexdigest()[:8]}",
+                        category="functional", severity="high",
+                        title=f'Button "{step.value}" — Error on Click',
+                        description=f'Clicking "{step.value}" caused: {step.error_message[:200]}',
+                        location=step.url_before,
+                        impact="Users clicking this button encounter an error.",
+                        suggestion="Fix the click handler.", source="journey",
+                    ))
+        elif not jr.overall_success:
+            failed = next((s for s in jr.steps if not s.success), None)
+            findings.append(Finding(
+                id=f"journey-fail-{hashlib.md5(jr.journey_name.encode()).hexdigest()[:8]}",
+                category="journey", severity="critical",
+                title=f"{jr.journey_name} — Journey Failed",
+                description=f"Failed at step {failed.step_number}: {failed.error_message}" if failed else "Could not complete.",
+                location=jr.start_url, impact="Users cannot complete this flow.",
+                suggestion="Fix the failing step.", source="journey",
+            ))
     print()
 
     # Step 4: Copywriting

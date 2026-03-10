@@ -20,6 +20,7 @@ from flask import Flask, Response, jsonify, render_template, request, send_from_
 
 load_dotenv()
 
+import hashlib
 from crawler import crawl_site
 from analyzer import run_analysis
 from journey import run_journeys
@@ -122,39 +123,54 @@ def _run_test_thread(task_id, url, max_pages, baseline_json_str, email, password
         )
         q.put({"type": "progress", "message": f"Found {len(findings)} issue(s) so far"})
 
-        # Step 3: User journey tests
-        q.put({"type": "step", "step": 3, "total_steps": 6, "message": "Testing user journeys..."})
+        # Step 3: User journey tests (buttons + AI-guided)
+        q.put({"type": "step", "step": 3, "total_steps": 6, "message": "Testing buttons & user journeys..."})
         journey_results = []
-        if api_key:
-            journey_results = loop.run_until_complete(
-                run_journeys(site_data, api_key, email, password, on_progress)
-            )
-            # Convert journey failures to findings
-            for jr in journey_results:
+        journey_results = loop.run_until_complete(
+            run_journeys(site_data, api_key, email, password, on_progress)
+        )
+        # Convert journey results to findings
+        for jr in journey_results:
+            if jr.journey_type == "button_test":
+                # Individual button failures become findings
+                for step in jr.steps:
+                    if not step.success:
+                        findings.append(Finding(
+                            id=f"btn-err-{hashlib.md5((step.value + step.url_before).encode()).hexdigest()[:8]}",
+                            category="functional",
+                            severity="high" if "Error" in step.error_message else "medium",
+                            title=f'Button "{step.value}" — Error on Click',
+                            description=f'Clicking "{step.value}" caused: {step.error_message[:200]}',
+                            location=step.url_before,
+                            impact="Users clicking this button will encounter an error or broken behavior.",
+                            suggestion="Check the click handler and ensure the element is functional.",
+                            source="journey",
+                        ))
+                    elif step.console_errors:
+                        findings.append(Finding(
+                            id=f"btn-jserr-{hashlib.md5((step.value + step.url_before).encode()).hexdigest()[:8]}",
+                            category="functional",
+                            severity="medium",
+                            title=f'Button "{step.value}" — JS Error After Click',
+                            description=f'Clicking "{step.value}" triggered console error: {step.console_errors[0][:200]}',
+                            location=step.url_before,
+                            impact="JavaScript errors after clicking may break functionality.",
+                            suggestion="Fix the JavaScript error triggered by this interaction.",
+                            source="journey",
+                        ))
+            else:
+                # AI-guided journey results
                 if not jr.overall_success:
                     failed_step = next((s for s in jr.steps if not s.success), None)
                     findings.append(Finding(
-                        id=f"journey-fail-{jr.journey_type}",
+                        id=f"journey-fail-{hashlib.md5(jr.journey_name.encode()).hexdigest()[:8]}",
                         category="journey",
                         severity="critical",
                         title=f"{jr.journey_name} — Journey Failed",
-                        description=f"The {jr.journey_name} flow failed at step {failed_step.step_number}: {failed_step.error_message}" if failed_step else "Journey could not be completed.",
+                        description=f"Failed at step {failed_step.step_number}: {failed_step.error_message}" if failed_step else "Could not complete.",
                         location=jr.start_url,
-                        impact=f"Users cannot complete the {jr.journey_type} flow.",
+                        impact=f"Users cannot complete this flow.",
                         suggestion="Fix the failing step and re-test.",
-                        source="journey",
-                    ))
-                else:
-                    # Journey passed — add as positive signal (low severity = informational)
-                    findings.append(Finding(
-                        id=f"journey-pass-{jr.journey_type}",
-                        category="journey",
-                        severity="low",
-                        title=f"{jr.journey_name} — Journey Passed",
-                        description=f"The {jr.journey_name} flow completed successfully in {len(jr.steps)} steps ({jr.duration_ms:.0f}ms).",
-                        location=jr.start_url,
-                        impact="",
-                        suggestion="",
                         source="journey",
                     ))
         else:
