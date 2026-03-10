@@ -13,24 +13,18 @@
 * { margin:0; padding:0; box-sizing:border-box; }
 body { font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif; background:var(--bg); color:var(--text); line-height:1.6; min-height:100vh; }
 
-.header { background:linear-gradient(135deg,#0f172a 0%,#1e3a5f 50%,#1e40af 100%); color:white; padding:48px 24px; text-align:center; }
+.header { background:linear-gradient(135deg,#0f172a 0%,#1e3a5f 50%,#1e40af 100%); color:white; padding:40px 24px; text-align:center; }
 .header h1 { font-size:32px; font-weight:800; margin-bottom:4px; }
 .header .version { display:inline-block; padding:2px 10px; border-radius:9999px; background:rgba(255,255,255,0.15); font-size:11px; font-weight:600; margin-left:8px; vertical-align:middle; }
 .header p { font-size:15px; opacity:0.7; max-width:560px; margin:8px auto 0; }
 
-.container { max-width:720px; margin:-40px auto 40px; padding:0 16px; position:relative; z-index:1; }
-.card { background:var(--card); border-radius:16px; box-shadow:0 4px 24px rgba(0,0,0,0.08); padding:32px; margin-bottom:20px; }
+.container { max-width:720px; margin:-36px auto 40px; padding:0 16px; position:relative; z-index:1; }
+.card { background:var(--card); border-radius:16px; box-shadow:0 4px 24px rgba(0,0,0,0.08); padding:28px 32px; margin-bottom:20px; }
 
-.form-group { margin-bottom:20px; }
-.form-group label { display:block; font-size:13px; font-weight:600; color:var(--text2); margin-bottom:6px; text-transform:uppercase; letter-spacing:.5px; }
-.input-row { display:flex; gap:12px; }
-.input-row input[type="url"], .input-row input[type="text"] {
-    flex:1; padding:14px 18px; border:2px solid var(--border); border-radius:12px; font-size:16px; outline:none; transition:border-color .2s;
-}
-.input-row input:focus { border-color:var(--primary); }
-input[type="number"], input[type="email"], input[type="password"] {
-    padding:12px 14px; border:2px solid var(--border); border-radius:12px; font-size:14px; outline:none; width:100%;
-}
+.form-group { margin-bottom:18px; }
+.form-group label { display:block; font-size:12px; font-weight:600; color:var(--text2); margin-bottom:6px; text-transform:uppercase; letter-spacing:.5px; }
+input[type="url"], input[type="text"] { width:100%; padding:14px 18px; border:2px solid var(--border); border-radius:12px; font-size:16px; outline:none; transition:border-color .2s; }
+input[type="number"], input[type="email"], input[type="password"] { padding:12px 14px; border:2px solid var(--border); border-radius:12px; font-size:14px; outline:none; width:100%; }
 input[type="number"] { width:80px; text-align:center; }
 input:focus { border-color:var(--primary); }
 
@@ -39,63 +33,83 @@ input:focus { border-color:var(--primary); }
 .btn-primary:hover { transform:translateY(-1px); box-shadow:0 6px 16px rgba(59,130,246,.5); }
 .btn-primary:disabled { opacity:.5; cursor:not-allowed; transform:none; box-shadow:none; }
 
-.baseline-area { border:2px dashed var(--border); border-radius:12px; padding:14px; text-align:center; cursor:pointer; transition:border-color .2s; font-size:13px; color:var(--text2); }
-.baseline-area:hover { border-color:var(--primary); }
-.baseline-area.has-file { border-color:var(--green); background:#f0fdf4; color:var(--text); }
-
-.options-row { display:flex; gap:20px; align-items:end; flex-wrap:wrap; }
+/* Mode selector */
+.mode-selector { display:flex; gap:10px; margin-bottom:20px; flex-wrap:wrap; }
+.mode-option { flex:1; min-width:140px; }
+.mode-option input { display:none; }
+.mode-option label {
+    display:block; padding:14px 12px; border:2px solid var(--border); border-radius:12px;
+    text-align:center; cursor:pointer; transition:all .2s; font-size:13px;
+}
+.mode-option label strong { display:block; font-size:14px; margin-bottom:2px; }
+.mode-option label span { font-size:11px; color:var(--text3); }
+.mode-option input:checked + label { border-color:var(--primary); background:#eff6ff; color:var(--primary); }
 
 /* Journey toggle */
-.journey-toggle { display:flex; align-items:center; gap:10px; cursor:pointer; font-size:14px; font-weight:600; color:var(--text2); margin-bottom:16px; }
+.journey-section { border:1px solid var(--border); border-radius:12px; padding:16px; margin-bottom:18px; }
+.journey-toggle { display:flex; align-items:center; gap:10px; cursor:pointer; font-size:14px; font-weight:600; color:var(--text2); }
 .journey-toggle input { display:none; }
-.toggle-track { width:44px; height:24px; background:var(--border); border-radius:12px; position:relative; transition:.2s; }
+.toggle-track { width:44px; height:24px; background:var(--border); border-radius:12px; position:relative; transition:.2s; flex-shrink:0; }
 .toggle-track::after { content:''; position:absolute; left:3px; top:3px; width:18px; height:18px; background:white; border-radius:50%; transition:.2s; }
 .journey-toggle input:checked + .toggle-track { background:var(--purple); }
 .journey-toggle input:checked + .toggle-track::after { left:23px; }
-.journey-fields { display:none; gap:12px; flex-wrap:wrap; }
+.journey-fields { display:none; gap:12px; flex-wrap:wrap; margin-top:12px; }
 .journey-fields.active { display:flex; }
-.journey-fields .field { flex:1; min-width:200px; }
+.journey-fields .field { flex:1; min-width:180px; }
 .journey-note { font-size:11px; color:var(--text3); margin-top:8px; }
+
+.baseline-area { border:2px dashed var(--border); border-radius:12px; padding:12px; text-align:center; cursor:pointer; transition:border-color .2s; font-size:13px; color:var(--text2); }
+.baseline-area:hover { border-color:var(--primary); }
+.baseline-area.has-file { border-color:var(--green); background:#f0fdf4; color:var(--text); }
+
+.options-row { display:flex; gap:16px; align-items:end; flex-wrap:wrap; }
 
 /* Progress */
 .progress-area { display:none; }
 .progress-area.active { display:block; }
-.steps { display:flex; gap:0; margin-bottom:20px; }
-.step { flex:1; text-align:center; padding:10px 4px; font-size:11px; font-weight:600; color:var(--text3); position:relative; }
+.steps { display:flex; gap:0; margin-bottom:16px; }
+.step { flex:1; text-align:center; padding:8px 4px; font-size:11px; font-weight:600; color:var(--text3); position:relative; }
 .step::after { content:''; position:absolute; bottom:0; left:0; right:0; height:3px; background:var(--border); border-radius:2px; }
 .step.active { color:var(--primary); }
-.step.active::after { background:var(--primary); }
+.step.active::after { background:var(--primary); animation:pulse 1.5s infinite; }
 .step.done { color:var(--green); }
 .step.done::after { background:var(--green); }
+@keyframes pulse { 0%,100% { opacity:1; } 50% { opacity:.5; } }
 
-.log-box { background:#0f172a; color:#a5f3fc; border-radius:12px; padding:16px 20px; font-family:'SF Mono','Fira Code',monospace; font-size:12px; line-height:1.8; max-height:300px; overflow-y:auto; white-space:pre-wrap; }
-.log-box .log-line { opacity:.7; }
+.log-box { background:#0f172a; color:#a5f3fc; border-radius:12px; padding:14px 18px; font-family:'SF Mono','Fira Code',monospace; font-size:12px; line-height:1.7; max-height:260px; overflow-y:auto; white-space:pre-wrap; }
+.log-box .log-line { opacity:.6; }
 .log-box .log-line:last-child { opacity:1; }
 
-.spinner { display:inline-block; width:16px; height:16px; border:2.5px solid var(--border); border-top-color:var(--primary); border-radius:50%; animation:spin .8s linear infinite; vertical-align:middle; margin-right:6px; }
-@keyframes spin { to { transform:rotate(360deg); } }
+/* Pause modal (human-in-the-loop) */
+.pause-banner { display:none; background:linear-gradient(135deg,#fef3c7,#fde68a); border:2px solid var(--orange); border-radius:12px; padding:20px; margin-bottom:16px; text-align:center; animation:fadeIn .3s; }
+.pause-banner.active { display:block; }
+.pause-banner p { font-size:14px; font-weight:600; color:#92400e; margin-bottom:12px; }
+.pause-banner .hint { font-size:12px; color:#a16207; margin-bottom:16px; }
+.btn-continue { padding:12px 32px; border:none; border-radius:12px; background:var(--orange); color:white; font-size:14px; font-weight:700; cursor:pointer; }
+.btn-continue:hover { background:#ea580c; }
+@keyframes fadeIn { from { opacity:0; transform:translateY(-10px); } to { opacity:1; transform:translateY(0); } }
 
 /* Results */
 .results-area { display:none; }
 .results-area.active { display:block; }
-.score-reveal { text-align:center; padding:24px; animation:fadeInUp .6s ease; }
+.score-reveal { text-align:center; padding:20px; animation:fadeInUp .6s ease; }
 @keyframes fadeInUp { from { opacity:0; transform:translateY(20px); } to { opacity:1; transform:translateY(0); } }
-.score-circle { width:140px; height:140px; border-radius:50%; display:inline-flex; align-items:center; justify-content:center; font-size:48px; font-weight:800; margin-bottom:12px; }
-.score-label { font-size:14px; color:var(--text2); }
+.score-circle { width:130px; height:130px; border-radius:50%; display:inline-flex; align-items:center; justify-content:center; font-size:44px; font-weight:800; margin-bottom:10px; }
+.score-label { font-size:13px; color:var(--text2); }
 
-.stats-row { display:flex; gap:16px; justify-content:center; margin:20px 0; flex-wrap:wrap; }
-.stat { text-align:center; padding:12px 20px; background:var(--bg); border-radius:10px; }
-.stat-value { font-size:22px; font-weight:700; }
-.stat-label { font-size:11px; color:var(--text3); text-transform:uppercase; }
+.stats-row { display:flex; gap:14px; justify-content:center; margin:16px 0; flex-wrap:wrap; }
+.stat { text-align:center; padding:10px 18px; background:var(--bg); border-radius:10px; }
+.stat-value { font-size:20px; font-weight:700; }
+.stat-label { font-size:10px; color:var(--text3); text-transform:uppercase; }
 
-.cat-scores { display:grid; grid-template-columns:repeat(auto-fit,minmax(140px,1fr)); gap:10px; margin:20px 0; }
+.cat-scores { display:grid; grid-template-columns:repeat(auto-fit,minmax(140px,1fr)); gap:10px; margin:16px 0; }
 .cat-score { background:var(--bg); border-radius:10px; padding:10px 14px; }
 .cat-score-header { display:flex; justify-content:space-between; font-size:12px; font-weight:600; margin-bottom:4px; }
 .cat-bar { height:5px; background:var(--border); border-radius:3px; overflow:hidden; }
 .cat-bar-fill { height:100%; border-radius:3px; }
 
-.action-btns { display:flex; gap:12px; justify-content:center; margin-top:24px; flex-wrap:wrap; }
-.btn-outline { padding:12px 24px; border:2px solid var(--border); border-radius:12px; background:transparent; font-size:14px; font-weight:600; cursor:pointer; color:var(--text); transition:all .2s; text-decoration:none; display:inline-block; }
+.action-btns { display:flex; gap:12px; justify-content:center; margin-top:20px; flex-wrap:wrap; }
+.btn-outline { padding:10px 20px; border:2px solid var(--border); border-radius:12px; background:transparent; font-size:13px; font-weight:600; cursor:pointer; color:var(--text); transition:all .2s; text-decoration:none; display:inline-block; }
 .btn-outline:hover { border-color:var(--primary); color:var(--primary); }
 
 .error-msg { background:#fef2f2; color:var(--red); border-radius:12px; padding:16px; text-align:center; font-weight:600; display:none; }
@@ -106,35 +120,51 @@ input:focus { border-color:var(--primary); }
 
 <div class="header">
     <h1>QATest <span class="version">v2</span></h1>
-    <p>AI-powered QA testing with user journey simulation and copywriting analysis. Enter a URL and get a comprehensive report.</p>
+    <p>AI-powered QA testing with real browser interaction. Watch the journey, help when needed.</p>
 </div>
 
 <div class="container">
-
     <div class="card" id="formCard">
         <div class="form-group">
             <label>Website URL</label>
-            <div class="input-row">
-                <input type="url" id="urlInput" placeholder="https://yoursite.com" autofocus>
+            <input type="url" id="urlInput" placeholder="https://yoursite.com" autofocus>
+        </div>
+
+        <!-- Test Mode -->
+        <label style="font-size:12px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px;display:block">Test Mode</label>
+        <div class="mode-selector">
+            <div class="mode-option">
+                <input type="radio" name="mode" id="modeFull" value="full" checked>
+                <label for="modeFull"><strong>Full Analysis</strong><span>Everything: crawl, AI, journeys, copy</span></label>
+            </div>
+            <div class="mode-option">
+                <input type="radio" name="mode" id="modeJourney" value="journey">
+                <label for="modeJourney"><strong>Journey Only</strong><span>Button clicks + AI user journey</span></label>
+            </div>
+            <div class="mode-option">
+                <input type="radio" name="mode" id="modeQuick" value="quick">
+                <label for="modeQuick"><strong>Quick Scan</strong><span>Automated checks, no AI</span></label>
             </div>
         </div>
 
-        <!-- Journey Testing Toggle -->
-        <label class="journey-toggle" for="journeyToggle">
-            <input type="checkbox" id="journeyToggle" onchange="toggleJourneyFields()">
-            <span class="toggle-track"></span>
-            Enable User Journey Testing
-        </label>
-        <div class="journey-fields" id="journeyFields">
-            <div class="field">
-                <label>Test Email</label>
-                <input type="email" id="emailInput" placeholder="test@example.com">
+        <!-- Journey Credentials -->
+        <div class="journey-section">
+            <label class="journey-toggle" for="journeyToggle">
+                <input type="checkbox" id="journeyToggle" onchange="toggleJourneyFields()">
+                <span class="toggle-track"></span>
+                Login/Signup Credentials (optional)
+            </label>
+            <div class="journey-fields" id="journeyFields">
+                <div class="field">
+                    <label>Test Email</label>
+                    <input type="email" id="emailInput" placeholder="test@example.com">
+                </div>
+                <div class="field">
+                    <label>Test Password</label>
+                    <input type="password" id="passwordInput" placeholder="Test password">
+                </div>
+                <p class="journey-note">Used only for login/signup testing. Never stored. Leave blank for public-only testing — contact forms, search, buttons will still be tested.</p>
             </div>
-            <div class="field">
-                <label>Test Password</label>
-                <input type="password" id="passwordInput" placeholder="Test password">
-            </div>
-            <p class="journey-note">Credentials are used only to test login/signup flows. They are never stored or logged. For sites without auth, leave blank — forms like contact, search, and newsletter will still be tested.</p>
         </div>
 
         <div class="options-row">
@@ -145,65 +175,56 @@ input:focus { border-color:var(--primary); }
             <div class="form-group" style="flex:1">
                 <label>Baseline (Run 2)</label>
                 <div class="baseline-area" id="baselineArea" onclick="document.getElementById('baselineFile').click()">
-                    Upload previous <strong>baseline.json</strong> for comparison
+                    Upload <strong>baseline.json</strong> for comparison
                 </div>
                 <input type="file" id="baselineFile" accept=".json" style="display:none">
             </div>
         </div>
 
-        <div style="text-align:center;margin-top:8px">
+        <div style="text-align:center;margin-top:4px">
             <button class="btn btn-primary" id="startBtn" onclick="startTest()">Start QA Test</button>
         </div>
     </div>
 
+    <!-- Progress -->
     <div class="card progress-area" id="progressArea">
-        <div class="steps">
-            <div class="step" id="step1">1. Crawl</div>
-            <div class="step" id="step2">2. Analyse</div>
-            <div class="step" id="step3">3. Journeys</div>
-            <div class="step" id="step4">4. Copy</div>
-            <div class="step" id="step5">5. Score</div>
-            <div class="step" id="step6">6. Report</div>
+        <div class="steps" id="stepsBar"></div>
+
+        <!-- Human-in-the-loop pause banner -->
+        <div class="pause-banner" id="pauseBanner">
+            <p id="pauseMessage">The test needs your help!</p>
+            <div class="hint">A browser window is open. Please complete the action there, then click Continue.</div>
+            <button class="btn-continue" onclick="resumeTest()">Continue Testing</button>
         </div>
+
         <div class="log-box" id="logBox"></div>
     </div>
 
     <div class="error-msg" id="errorMsg"></div>
 
+    <!-- Results -->
     <div class="card results-area" id="resultsArea">
         <div class="score-reveal">
             <div class="score-circle" id="scoreCircle">—</div>
             <div class="score-label">Product Readiness Score</div>
         </div>
-
         <div class="stats-row">
-            <div class="stat">
-                <div class="stat-value" id="statPages">—</div>
-                <div class="stat-label">Pages</div>
-            </div>
-            <div class="stat">
-                <div class="stat-value" id="statJourneys">—</div>
-                <div class="stat-label">Journeys</div>
-            </div>
-            <div class="stat">
-                <div class="stat-value" id="statIssues">—</div>
-                <div class="stat-label">Issues</div>
-            </div>
+            <div class="stat"><div class="stat-value" id="statPages">—</div><div class="stat-label">Pages</div></div>
+            <div class="stat"><div class="stat-value" id="statJourneys">—</div><div class="stat-label">Journeys</div></div>
+            <div class="stat"><div class="stat-value" id="statIssues">—</div><div class="stat-label">Issues</div></div>
         </div>
-
         <div class="cat-scores" id="catScores"></div>
-
         <div class="action-btns">
             <a class="btn btn-primary" id="viewReportBtn" href="#" target="_blank" style="text-decoration:none;color:white">View Full Report</a>
             <a class="btn-outline" id="downloadBaselineBtn" href="#" download="baseline.json">Download Baseline</a>
             <button class="btn-outline" onclick="resetForm()">Test Another Site</button>
         </div>
     </div>
-
 </div>
 
 <script>
 let baselineJson = null;
+let currentTaskId = null;
 
 function toggleJourneyFields() {
     document.getElementById('journeyFields').classList.toggle('active', document.getElementById('journeyToggle').checked);
@@ -231,9 +252,25 @@ function addLog(msg) {
     box.scrollTop = box.scrollHeight;
 }
 
+function buildSteps(total) {
+    const names = {
+        6: ['1. Crawl', '2. Analyse', '3. Journeys', '4. Copy', '5. Score', '6. Report'],
+        3: ['1. Crawl', '2. Test', '3. Report'],
+    };
+    const labels = names[total] || names[3];
+    const bar = document.getElementById('stepsBar');
+    bar.innerHTML = '';
+    labels.forEach((label, i) => {
+        const el = document.createElement('div');
+        el.className = 'step';
+        el.id = 'step' + (i + 1);
+        el.textContent = label;
+        bar.appendChild(el);
+    });
+}
+
 function setStep(n, total) {
-    total = total || 6;
-    for (let i = 1; i <= total; i++) {
+    for (let i = 1; i <= (total || 6); i++) {
         const el = document.getElementById('step' + i);
         if (!el) continue;
         el.classList.remove('active', 'done');
@@ -253,19 +290,24 @@ async function startTest() {
     const url = document.getElementById('urlInput').value.trim();
     if (!url) { document.getElementById('urlInput').focus(); return; }
 
+    const mode = document.querySelector('input[name="mode"]:checked').value;
     const maxPages = document.getElementById('maxPages').value;
     const email = document.getElementById('emailInput').value.trim();
     const password = document.getElementById('passwordInput').value;
+
+    const totalSteps = mode === 'full' ? 6 : 3;
+    buildSteps(totalSteps);
 
     document.getElementById('startBtn').disabled = true;
     document.getElementById('progressArea').classList.add('active');
     document.getElementById('resultsArea').classList.remove('active');
     document.getElementById('errorMsg').classList.remove('active');
+    document.getElementById('pauseBanner').classList.remove('active');
     document.getElementById('logBox').innerHTML = '';
-    setStep(1);
-    addLog('Starting QA test for ' + url + '...');
+    setStep(1, totalSteps);
+    addLog('Starting ' + mode + ' test for ' + url + '...');
 
-    const body = { url, max_pages: maxPages };
+    const body = { url, max_pages: maxPages, mode };
     if (email) body.email = email;
     if (password) body.password = password;
     if (baselineJson) body.baseline_json = baselineJson;
@@ -277,13 +319,11 @@ async function startTest() {
             headers: {'Content-Type': 'application/json'},
             body: JSON.stringify(body)
         });
-    } catch (e) {
-        showError('Could not connect to server.');
-        return;
-    }
+    } catch (e) { showError('Could not connect to server.'); return; }
 
     const { task_id, error } = await resp.json();
     if (error) { showError(error); return; }
+    currentTaskId = task_id;
 
     const evtSource = new EventSource('/progress/' + task_id);
     evtSource.onmessage = function(event) {
@@ -291,12 +331,19 @@ async function startTest() {
         if (data.type === 'step') {
             setStep(data.step, data.total_steps);
             addLog(data.message);
+            document.getElementById('pauseBanner').classList.remove('active');
         } else if (data.type === 'progress') {
             addLog(data.message);
+        } else if (data.type === 'pause') {
+            // Human-in-the-loop: show the pause banner
+            document.getElementById('pauseMessage').textContent = data.message;
+            document.getElementById('pauseBanner').classList.add('active');
+            addLog('⏸ PAUSED — Waiting for your help...');
         } else if (data.type === 'done') {
             evtSource.close();
-            setStep(7);
-            addLog('Report generated!');
+            setStep(data.total_steps ? data.total_steps + 1 : 99);
+            document.getElementById('pauseBanner').classList.remove('active');
+            addLog('Done! Report generated.');
             showResults(data);
         } else if (data.type === 'error') {
             evtSource.close();
@@ -304,6 +351,13 @@ async function startTest() {
         }
     };
     evtSource.onerror = function() { evtSource.close(); };
+}
+
+async function resumeTest() {
+    if (!currentTaskId) return;
+    document.getElementById('pauseBanner').classList.remove('active');
+    addLog('▶ Resuming test...');
+    await fetch('/resume/' + currentTaskId, { method: 'POST' });
 }
 
 function showError(msg) {
@@ -315,36 +369,22 @@ function showError(msg) {
 
 function showResults(data) {
     document.getElementById('resultsArea').classList.add('active');
-
     const sc = data.score;
     const circle = document.getElementById('scoreCircle');
     circle.textContent = sc;
     circle.style.border = '6px solid ' + scoreColor(sc);
     circle.style.color = scoreColor(sc);
-
     document.getElementById('statPages').textContent = data.pages_tested;
     document.getElementById('statJourneys').textContent = data.journeys_tested || 0;
     document.getElementById('statIssues').textContent = data.total_issues;
 
     const catEl = document.getElementById('catScores');
     catEl.innerHTML = '';
-    const labels = {
-        functional:'Functional', security:'Security', usability:'Usability',
-        visual:'Visual', accessibility:'Accessibility', content:'Content',
-        copywriting:'Copywriting', journey:'Journeys'
-    };
-    for (const [cat, score] of Object.entries(data.categories)) {
+    const labels = {functional:'Functional',security:'Security',usability:'Usability',visual:'Visual',accessibility:'Accessibility',content:'Content',copywriting:'Copywriting',journey:'Journeys'};
+    for (const [cat, score] of Object.entries(data.categories || {})) {
         const c = scoreColor(score);
-        catEl.innerHTML += `
-            <div class="cat-score">
-                <div class="cat-score-header">
-                    <span>${labels[cat] || cat}</span>
-                    <span style="color:${c}">${score}</span>
-                </div>
-                <div class="cat-bar"><div class="cat-bar-fill" style="width:${score}%;background:${c}"></div></div>
-            </div>`;
+        catEl.innerHTML += `<div class="cat-score"><div class="cat-score-header"><span>${labels[cat]||cat}</span><span style="color:${c}">${score}</span></div><div class="cat-bar"><div class="cat-bar-fill" style="width:${score}%;background:${c}"></div></div></div>`;
     }
-
     document.getElementById('viewReportBtn').href = data.report_url;
     document.getElementById('downloadBaselineBtn').href = data.baseline_url;
 }
@@ -354,17 +394,17 @@ function resetForm() {
     document.getElementById('progressArea').classList.remove('active');
     document.getElementById('resultsArea').classList.remove('active');
     document.getElementById('errorMsg').classList.remove('active');
+    document.getElementById('pauseBanner').classList.remove('active');
     document.getElementById('urlInput').value = '';
     document.getElementById('urlInput').focus();
+    currentTaskId = null;
     baselineJson = null;
     const area = document.getElementById('baselineArea');
-    area.innerHTML = 'Upload previous <strong>baseline.json</strong> for comparison';
+    area.innerHTML = 'Upload <strong>baseline.json</strong> for comparison';
     area.classList.remove('has-file');
 }
 
-document.getElementById('urlInput').addEventListener('keydown', function(e) {
-    if (e.key === 'Enter') startTest();
-});
+document.getElementById('urlInput').addEventListener('keydown', function(e) { if (e.key === 'Enter') startTest(); });
 </script>
 
 </body>

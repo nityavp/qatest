@@ -1,13 +1,10 @@
 #!/usr/bin/env python3
 """
-QATest v2 — Web UI for AI-powered QA testing with user journey and copywriting analysis.
-
-Usage:
-    python3 app.py
-    Then open http://localhost:8080
+QATest v2 — Web UI with test mode options and human-in-the-loop journey testing.
 """
 
 import asyncio
+import hashlib
 import json
 import os
 import queue
@@ -20,7 +17,6 @@ from flask import Flask, Response, jsonify, render_template, request, send_from_
 
 load_dotenv()
 
-import hashlib
 from crawler import crawl_site
 from analyzer import run_analysis
 from journey import run_journeys
@@ -33,8 +29,8 @@ app = Flask(__name__)
 REPORTS_DIR = os.path.join(os.path.dirname(__file__), "reports")
 os.makedirs(REPORTS_DIR, exist_ok=True)
 
-progress_queues: dict = {}
-test_results: dict = {}
+progress_queues: dict = {}   # task_id -> Queue (server → browser)
+resume_queues: dict = {}     # task_id -> Queue (browser → server, for human-in-the-loop)
 
 
 @app.route("/")
@@ -55,18 +51,30 @@ def start_test():
     baseline_data = data.get("baseline_json")
     email = data.get("email", "").strip()
     password = data.get("password", "").strip()
+    mode = data.get("mode", "full")  # "full", "journey", "quick"
 
     task_id = uuid.uuid4().hex[:10]
     progress_queues[task_id] = queue.Queue()
+    resume_queues[task_id] = queue.Queue()
 
     thread = threading.Thread(
         target=_run_test_thread,
-        args=(task_id, url, max_pages, baseline_data, email, password),
+        args=(task_id, url, max_pages, baseline_data, email, password, mode),
         daemon=True,
     )
     thread.start()
 
     return jsonify({"task_id": task_id})
+
+
+@app.route("/resume/<task_id>", methods=["POST"])
+def resume_test(task_id):
+    """User clicked Continue after manually interacting with the browser."""
+    q = resume_queues.get(task_id)
+    if q:
+        q.put("continue")
+        return jsonify({"ok": True})
+    return jsonify({"error": "Unknown task"}), 404
 
 
 @app.route("/progress/<task_id>")
@@ -94,20 +102,30 @@ def serve_report(filename):
     return send_from_directory(REPORTS_DIR, filename)
 
 
-def _run_test_thread(task_id, url, max_pages, baseline_json_str, email, password):
+def _run_test_thread(task_id, url, max_pages, baseline_json_str, email, password, mode):
     q = progress_queues[task_id]
+    rq = resume_queues[task_id]
 
     def on_progress(msg):
         q.put({"type": "progress", "message": msg})
+
+    # Human-in-the-loop: pause journey and wait for user
+    async def on_need_human(message):
+        q.put({"type": "pause", "message": message})
+        # Block until user clicks Continue
+        rq.get(timeout=300)  # 5 min timeout
 
     loop = asyncio.new_event_loop()
     asyncio.set_event_loop(loop)
 
     try:
         api_key = os.environ.get("GEMINI_API_KEY", "")
+        findings = []
+        journey_results = []
+        total_steps = {"full": 6, "journey": 3, "quick": 3}[mode]
 
-        # Step 1: Crawl
-        q.put({"type": "step", "step": 1, "total_steps": 6, "message": "Crawling site..."})
+        # ── STEP 1: Crawl (all modes) ─────────────────────────────
+        q.put({"type": "step", "step": 1, "total_steps": total_steps, "message": "Crawling site..."})
         site_data = loop.run_until_complete(
             crawl_site(url, max_pages=max_pages, on_progress=on_progress)
         )
@@ -116,86 +134,64 @@ def _run_test_thread(task_id, url, max_pages, baseline_json_str, email, password
             return
         q.put({"type": "progress", "message": f"Crawled {len(site_data.pages)} page(s)"})
 
-        # Step 2: Automated + AI analysis
-        q.put({"type": "step", "step": 2, "total_steps": 6, "message": "Running analysis..."})
-        findings = loop.run_until_complete(
-            run_analysis(site_data, api_key=api_key, on_progress=on_progress)
-        )
-        q.put({"type": "progress", "message": f"Found {len(findings)} issue(s) so far"})
-
-        # Step 3: User journey tests (buttons + AI-guided)
-        q.put({"type": "step", "step": 3, "total_steps": 6, "message": "Testing buttons & user journeys..."})
-        journey_results = []
-        journey_results = loop.run_until_complete(
-            run_journeys(site_data, api_key, email, password, on_progress)
-        )
-        # Convert journey results to findings
-        for jr in journey_results:
-            if jr.journey_type == "button_test":
-                # Individual button failures become findings
-                for step in jr.steps:
-                    if not step.success:
-                        findings.append(Finding(
-                            id=f"btn-err-{hashlib.md5((step.value + step.url_before).encode()).hexdigest()[:8]}",
-                            category="functional",
-                            severity="high" if "Error" in step.error_message else "medium",
-                            title=f'Button "{step.value}" — Error on Click',
-                            description=f'Clicking "{step.value}" caused: {step.error_message[:200]}',
-                            location=step.url_before,
-                            impact="Users clicking this button will encounter an error or broken behavior.",
-                            suggestion="Check the click handler and ensure the element is functional.",
-                            source="journey",
-                        ))
-                    elif step.console_errors:
-                        findings.append(Finding(
-                            id=f"btn-jserr-{hashlib.md5((step.value + step.url_before).encode()).hexdigest()[:8]}",
-                            category="functional",
-                            severity="medium",
-                            title=f'Button "{step.value}" — JS Error After Click',
-                            description=f'Clicking "{step.value}" triggered console error: {step.console_errors[0][:200]}',
-                            location=step.url_before,
-                            impact="JavaScript errors after clicking may break functionality.",
-                            suggestion="Fix the JavaScript error triggered by this interaction.",
-                            source="journey",
-                        ))
-            else:
-                # AI-guided journey results
-                if not jr.overall_success:
-                    failed_step = next((s for s in jr.steps if not s.success), None)
-                    findings.append(Finding(
-                        id=f"journey-fail-{hashlib.md5(jr.journey_name.encode()).hexdigest()[:8]}",
-                        category="journey",
-                        severity="critical",
-                        title=f"{jr.journey_name} — Journey Failed",
-                        description=f"Failed at step {failed_step.step_number}: {failed_step.error_message}" if failed_step else "Could not complete.",
-                        location=jr.start_url,
-                        impact=f"Users cannot complete this flow.",
-                        suggestion="Fix the failing step and re-test.",
-                        source="journey",
-                    ))
-        else:
-            q.put({"type": "progress", "message": "  Skipping journeys (no API key)"})
-
-        # Step 4: Copywriting analysis
-        q.put({"type": "step", "step": 4, "total_steps": 6, "message": "Analyzing copywriting..."})
-        if api_key:
-            copy_findings = loop.run_until_complete(
-                run_copy_analysis(site_data, journey_results, api_key, on_progress)
+        if mode == "full":
+            # ── STEP 2: Automated + AI analysis ───────────────────
+            q.put({"type": "step", "step": 2, "total_steps": total_steps, "message": "Running analysis..."})
+            findings = loop.run_until_complete(
+                run_analysis(site_data, api_key=api_key, on_progress=on_progress)
             )
-            findings.extend(copy_findings)
-            q.put({"type": "progress", "message": f"Copywriting: found {len(copy_findings)} issue(s)"})
-        else:
-            q.put({"type": "progress", "message": "  Skipping copywriting (no API key)"})
+            q.put({"type": "progress", "message": f"Found {len(findings)} issue(s)"})
 
-        # Step 5: Score
-        q.put({"type": "step", "step": 5, "total_steps": 6, "message": "Calculating scores..."})
-        # Remove "passed journey" findings from scoring (they're informational)
-        scoring_findings = [f for f in findings if not f.id.startswith("journey-pass-")]
-        scores = calculate_scores(scoring_findings)
+            # ── STEP 3: Journeys ──────────────────────────────────
+            q.put({"type": "step", "step": 3, "total_steps": total_steps, "message": "Testing buttons & journeys..."})
+            journey_results = loop.run_until_complete(
+                run_journeys(site_data, api_key, email, password, on_progress, on_need_human)
+            )
+            _journeys_to_findings(journey_results, findings)
 
-        # Step 6: Report
-        q.put({"type": "step", "step": 6, "total_steps": 6, "message": "Generating report..."})
+            # ── STEP 4: Copywriting ───────────────────────────────
+            q.put({"type": "step", "step": 4, "total_steps": total_steps, "message": "Analyzing copywriting..."})
+            if api_key:
+                copy_findings = loop.run_until_complete(
+                    run_copy_analysis(site_data, journey_results, api_key, on_progress)
+                )
+                findings.extend(copy_findings)
 
+            # ── STEP 5: Score ─────────────────────────────────────
+            q.put({"type": "step", "step": 5, "total_steps": total_steps, "message": "Calculating scores..."})
+            scoring_findings = [f for f in findings if not f.id.startswith("journey-pass-")]
+            scores = calculate_scores(scoring_findings)
+
+            # ── STEP 6: Report ────────────────────────────────────
+            q.put({"type": "step", "step": 6, "total_steps": total_steps, "message": "Generating report..."})
+
+        elif mode == "journey":
+            # ── STEP 2: Journeys only ─────────────────────────────
+            q.put({"type": "step", "step": 2, "total_steps": total_steps, "message": "Testing buttons & journeys..."})
+            journey_results = loop.run_until_complete(
+                run_journeys(site_data, api_key, email, password, on_progress, on_need_human)
+            )
+            _journeys_to_findings(journey_results, findings)
+
+            # ── STEP 3: Report ────────────────────────────────────
+            q.put({"type": "step", "step": 3, "total_steps": total_steps, "message": "Generating report..."})
+            scoring_findings = [f for f in findings if not f.id.startswith("journey-pass-")]
+            scores = calculate_scores(scoring_findings)
+
+        elif mode == "quick":
+            # ── STEP 2: Automated checks only (no AI) ─────────────
+            q.put({"type": "step", "step": 2, "total_steps": total_steps, "message": "Running automated checks..."})
+            findings = loop.run_until_complete(
+                run_analysis(site_data, api_key=None, on_progress=on_progress)
+            )
+            q.put({"type": "progress", "message": f"Found {len(findings)} issue(s)"})
+
+            # ── STEP 3: Report ────────────────────────────────────
+            q.put({"type": "step", "step": 3, "total_steps": total_steps, "message": "Generating report..."})
+            scoring_findings = findings
+            scores = calculate_scores(scoring_findings)
+
+        # ── Generate report (all modes) ───────────────────────────
         baseline = None
         if baseline_json_str:
             try:
@@ -221,6 +217,53 @@ def _run_test_thread(task_id, url, max_pages, baseline_json_str, email, password
         q.put({"type": "error", "message": str(e)})
     finally:
         loop.close()
+        # Cleanup
+        progress_queues.pop(task_id, None)
+        resume_queues.pop(task_id, None)
+
+
+def _journeys_to_findings(journey_results, findings):
+    """Convert journey results into Finding objects."""
+    for jr in journey_results:
+        if jr.journey_type == "button_test":
+            for step in jr.steps:
+                if not step.success:
+                    findings.append(Finding(
+                        id=f"btn-err-{hashlib.md5((step.value + step.url_before).encode()).hexdigest()[:8]}",
+                        category="functional",
+                        severity="high",
+                        title=f'Button "{step.value}" — Not Clickable',
+                        description=f'Could not click "{step.value}": {step.error_message[:200]}',
+                        location=step.url_before,
+                        impact="This button/CTA does not work for users.",
+                        suggestion="Ensure the element is visible, clickable, and has a working event handler.",
+                        source="journey",
+                    ))
+                elif step.console_errors:
+                    findings.append(Finding(
+                        id=f"btn-jserr-{hashlib.md5((step.value + step.url_before).encode()).hexdigest()[:8]}",
+                        category="functional",
+                        severity="medium",
+                        title=f'Button "{step.value}" — JS Error After Click',
+                        description=f'Clicking triggered: {step.console_errors[0][:200]}',
+                        location=step.url_before,
+                        impact="JavaScript error may break functionality after this click.",
+                        suggestion="Fix the JavaScript error in the click handler.",
+                        source="journey",
+                    ))
+        else:
+            if not jr.overall_success:
+                failed = next((s for s in jr.steps if not s.success), None)
+                findings.append(Finding(
+                    id=f"journey-fail-{hashlib.md5(jr.journey_name.encode()).hexdigest()[:8]}",
+                    category="journey", severity="critical",
+                    title=f"{jr.journey_name} — Journey Failed",
+                    description=f"Failed at step {failed.step_number}: {failed.error_message}" if failed else "Could not complete.",
+                    location=jr.start_url,
+                    impact="Users cannot complete this flow.",
+                    suggestion="Fix the failing step and re-test.",
+                    source="journey",
+                ))
 
 
 if __name__ == "__main__":
