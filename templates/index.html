@@ -6,231 +6,111 @@
 <title>QATest — AI-Powered QA Testing</title>
 <style>
 :root {
-    --bg: #f1f5f9;
-    --card: #ffffff;
-    --text: #1e293b;
-    --text2: #64748b;
-    --text3: #94a3b8;
-    --border: #e2e8f0;
-    --primary: #3b82f6;
-    --primary-dark: #2563eb;
-    --green: #22c55e;
-    --red: #ef4444;
-    --orange: #f97316;
-    --yellow: #eab308;
+    --bg: #f1f5f9; --card: #ffffff; --text: #1e293b; --text2: #64748b; --text3: #94a3b8;
+    --border: #e2e8f0; --primary: #3b82f6; --primary-dark: #2563eb;
+    --green: #22c55e; --red: #ef4444; --orange: #f97316; --yellow: #eab308; --purple: #9333ea;
 }
-* { margin: 0; padding: 0; box-sizing: border-box; }
-body {
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
-    background: var(--bg);
-    color: var(--text);
-    line-height: 1.6;
-    min-height: 100vh;
-}
+* { margin:0; padding:0; box-sizing:border-box; }
+body { font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif; background:var(--bg); color:var(--text); line-height:1.6; min-height:100vh; }
 
-/* Header */
-.header {
-    background: linear-gradient(135deg, #0f172a 0%, #1e3a5f 50%, #1e40af 100%);
-    color: white;
-    padding: 48px 24px;
-    text-align: center;
-}
-.header h1 { font-size: 32px; font-weight: 800; margin-bottom: 8px; }
-.header p { font-size: 16px; opacity: 0.7; max-width: 500px; margin: 0 auto; }
+.header { background:linear-gradient(135deg,#0f172a 0%,#1e3a5f 50%,#1e40af 100%); color:white; padding:48px 24px; text-align:center; }
+.header h1 { font-size:32px; font-weight:800; margin-bottom:4px; }
+.header .version { display:inline-block; padding:2px 10px; border-radius:9999px; background:rgba(255,255,255,0.15); font-size:11px; font-weight:600; margin-left:8px; vertical-align:middle; }
+.header p { font-size:15px; opacity:0.7; max-width:560px; margin:8px auto 0; }
 
-/* Container */
-.container { max-width: 720px; margin: -40px auto 40px; padding: 0 16px; position: relative; z-index: 1; }
+.container { max-width:720px; margin:-40px auto 40px; padding:0 16px; position:relative; z-index:1; }
+.card { background:var(--card); border-radius:16px; box-shadow:0 4px 24px rgba(0,0,0,0.08); padding:32px; margin-bottom:20px; }
 
-/* Card */
-.card {
-    background: var(--card);
-    border-radius: 16px;
-    box-shadow: 0 4px 24px rgba(0,0,0,0.08);
-    padding: 32px;
-    margin-bottom: 20px;
+.form-group { margin-bottom:20px; }
+.form-group label { display:block; font-size:13px; font-weight:600; color:var(--text2); margin-bottom:6px; text-transform:uppercase; letter-spacing:.5px; }
+.input-row { display:flex; gap:12px; }
+.input-row input[type="url"], .input-row input[type="text"] {
+    flex:1; padding:14px 18px; border:2px solid var(--border); border-radius:12px; font-size:16px; outline:none; transition:border-color .2s;
 }
+.input-row input:focus { border-color:var(--primary); }
+input[type="number"], input[type="email"], input[type="password"] {
+    padding:12px 14px; border:2px solid var(--border); border-radius:12px; font-size:14px; outline:none; width:100%;
+}
+input[type="number"] { width:80px; text-align:center; }
+input:focus { border-color:var(--primary); }
 
-/* Form */
-.form-group { margin-bottom: 20px; }
-.form-group label { display: block; font-size: 13px; font-weight: 600; color: var(--text2); margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.5px; }
-.input-row { display: flex; gap: 12px; }
-.input-row input[type="url"],
-.input-row input[type="text"] {
-    flex: 1;
-    padding: 14px 18px;
-    border: 2px solid var(--border);
-    border-radius: 12px;
-    font-size: 16px;
-    outline: none;
-    transition: border-color 0.2s;
-}
-.input-row input:focus { border-color: var(--primary); }
-input[type="number"] {
-    width: 80px;
-    padding: 14px 12px;
-    border: 2px solid var(--border);
-    border-radius: 12px;
-    font-size: 16px;
-    outline: none;
-    text-align: center;
-}
-input[type="number"]:focus { border-color: var(--primary); }
+.btn { padding:14px 32px; border:none; border-radius:12px; font-size:16px; font-weight:600; cursor:pointer; transition:all .2s; }
+.btn-primary { background:linear-gradient(135deg,var(--primary) 0%,var(--primary-dark) 100%); color:white; box-shadow:0 4px 12px rgba(59,130,246,.4); }
+.btn-primary:hover { transform:translateY(-1px); box-shadow:0 6px 16px rgba(59,130,246,.5); }
+.btn-primary:disabled { opacity:.5; cursor:not-allowed; transform:none; box-shadow:none; }
 
-.btn {
-    padding: 14px 32px;
-    border: none;
-    border-radius: 12px;
-    font-size: 16px;
-    font-weight: 600;
-    cursor: pointer;
-    transition: all 0.2s;
-}
-.btn-primary {
-    background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
-    color: white;
-    box-shadow: 0 4px 12px rgba(59,130,246,0.4);
-}
-.btn-primary:hover { transform: translateY(-1px); box-shadow: 0 6px 16px rgba(59,130,246,0.5); }
-.btn-primary:disabled { opacity: 0.5; cursor: not-allowed; transform: none; box-shadow: none; }
+.baseline-area { border:2px dashed var(--border); border-radius:12px; padding:14px; text-align:center; cursor:pointer; transition:border-color .2s; font-size:13px; color:var(--text2); }
+.baseline-area:hover { border-color:var(--primary); }
+.baseline-area.has-file { border-color:var(--green); background:#f0fdf4; color:var(--text); }
 
-/* Baseline upload */
-.baseline-area {
-    border: 2px dashed var(--border);
-    border-radius: 12px;
-    padding: 16px;
-    text-align: center;
-    cursor: pointer;
-    transition: border-color 0.2s;
-    font-size: 14px;
-    color: var(--text2);
-}
-.baseline-area:hover { border-color: var(--primary); }
-.baseline-area.has-file { border-color: var(--green); background: #f0fdf4; color: var(--text); }
+.options-row { display:flex; gap:20px; align-items:end; flex-wrap:wrap; }
 
-/* Options row */
-.options-row { display: flex; gap: 24px; align-items: end; flex-wrap: wrap; }
+/* Journey toggle */
+.journey-toggle { display:flex; align-items:center; gap:10px; cursor:pointer; font-size:14px; font-weight:600; color:var(--text2); margin-bottom:16px; }
+.journey-toggle input { display:none; }
+.toggle-track { width:44px; height:24px; background:var(--border); border-radius:12px; position:relative; transition:.2s; }
+.toggle-track::after { content:''; position:absolute; left:3px; top:3px; width:18px; height:18px; background:white; border-radius:50%; transition:.2s; }
+.journey-toggle input:checked + .toggle-track { background:var(--purple); }
+.journey-toggle input:checked + .toggle-track::after { left:23px; }
+.journey-fields { display:none; gap:12px; flex-wrap:wrap; }
+.journey-fields.active { display:flex; }
+.journey-fields .field { flex:1; min-width:200px; }
+.journey-note { font-size:11px; color:var(--text3); margin-top:8px; }
 
 /* Progress */
-.progress-area { display: none; }
-.progress-area.active { display: block; }
+.progress-area { display:none; }
+.progress-area.active { display:block; }
+.steps { display:flex; gap:0; margin-bottom:20px; }
+.step { flex:1; text-align:center; padding:10px 4px; font-size:11px; font-weight:600; color:var(--text3); position:relative; }
+.step::after { content:''; position:absolute; bottom:0; left:0; right:0; height:3px; background:var(--border); border-radius:2px; }
+.step.active { color:var(--primary); }
+.step.active::after { background:var(--primary); }
+.step.done { color:var(--green); }
+.step.done::after { background:var(--green); }
 
-.steps { display: flex; gap: 0; margin-bottom: 20px; }
-.step {
-    flex: 1;
-    text-align: center;
-    padding: 12px 8px;
-    font-size: 12px;
-    font-weight: 600;
-    color: var(--text3);
-    position: relative;
-}
-.step::after {
-    content: '';
-    position: absolute;
-    bottom: 0; left: 0; right: 0;
-    height: 3px;
-    background: var(--border);
-    border-radius: 2px;
-}
-.step.active { color: var(--primary); }
-.step.active::after { background: var(--primary); }
-.step.done { color: var(--green); }
-.step.done::after { background: var(--green); }
+.log-box { background:#0f172a; color:#a5f3fc; border-radius:12px; padding:16px 20px; font-family:'SF Mono','Fira Code',monospace; font-size:12px; line-height:1.8; max-height:300px; overflow-y:auto; white-space:pre-wrap; }
+.log-box .log-line { opacity:.7; }
+.log-box .log-line:last-child { opacity:1; }
 
-.log-box {
-    background: #0f172a;
-    color: #a5f3fc;
-    border-radius: 12px;
-    padding: 16px 20px;
-    font-family: 'SF Mono', 'Fira Code', monospace;
-    font-size: 13px;
-    line-height: 1.8;
-    max-height: 280px;
-    overflow-y: auto;
-    white-space: pre-wrap;
-}
-.log-box .log-line { opacity: 0.7; }
-.log-box .log-line:last-child { opacity: 1; }
-
-/* Spinner */
-.spinner {
-    display: inline-block;
-    width: 18px; height: 18px;
-    border: 2.5px solid var(--border);
-    border-top-color: var(--primary);
-    border-radius: 50%;
-    animation: spin 0.8s linear infinite;
-    vertical-align: middle;
-    margin-right: 8px;
-}
-@keyframes spin { to { transform: rotate(360deg); } }
+.spinner { display:inline-block; width:16px; height:16px; border:2.5px solid var(--border); border-top-color:var(--primary); border-radius:50%; animation:spin .8s linear infinite; vertical-align:middle; margin-right:6px; }
+@keyframes spin { to { transform:rotate(360deg); } }
 
 /* Results */
-.results-area { display: none; }
-.results-area.active { display: block; }
+.results-area { display:none; }
+.results-area.active { display:block; }
+.score-reveal { text-align:center; padding:24px; animation:fadeInUp .6s ease; }
+@keyframes fadeInUp { from { opacity:0; transform:translateY(20px); } to { opacity:1; transform:translateY(0); } }
+.score-circle { width:140px; height:140px; border-radius:50%; display:inline-flex; align-items:center; justify-content:center; font-size:48px; font-weight:800; margin-bottom:12px; }
+.score-label { font-size:14px; color:var(--text2); }
 
-.score-reveal {
-    text-align: center;
-    padding: 24px;
-    animation: fadeInUp 0.6s ease;
-}
-@keyframes fadeInUp {
-    from { opacity: 0; transform: translateY(20px); }
-    to { opacity: 1; transform: translateY(0); }
-}
+.stats-row { display:flex; gap:16px; justify-content:center; margin:20px 0; flex-wrap:wrap; }
+.stat { text-align:center; padding:12px 20px; background:var(--bg); border-radius:10px; }
+.stat-value { font-size:22px; font-weight:700; }
+.stat-label { font-size:11px; color:var(--text3); text-transform:uppercase; }
 
-.score-circle {
-    width: 140px; height: 140px;
-    border-radius: 50%;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 48px;
-    font-weight: 800;
-    margin-bottom: 12px;
-}
-.score-label { font-size: 14px; color: var(--text2); }
+.cat-scores { display:grid; grid-template-columns:repeat(auto-fit,minmax(140px,1fr)); gap:10px; margin:20px 0; }
+.cat-score { background:var(--bg); border-radius:10px; padding:10px 14px; }
+.cat-score-header { display:flex; justify-content:space-between; font-size:12px; font-weight:600; margin-bottom:4px; }
+.cat-bar { height:5px; background:var(--border); border-radius:3px; overflow:hidden; }
+.cat-bar-fill { height:100%; border-radius:3px; }
 
-.stats-row { display: flex; gap: 16px; justify-content: center; margin: 20px 0; flex-wrap: wrap; }
-.stat { text-align: center; padding: 12px 20px; background: var(--bg); border-radius: 10px; }
-.stat-value { font-size: 22px; font-weight: 700; }
-.stat-label { font-size: 11px; color: var(--text3); text-transform: uppercase; }
+.action-btns { display:flex; gap:12px; justify-content:center; margin-top:24px; flex-wrap:wrap; }
+.btn-outline { padding:12px 24px; border:2px solid var(--border); border-radius:12px; background:transparent; font-size:14px; font-weight:600; cursor:pointer; color:var(--text); transition:all .2s; text-decoration:none; display:inline-block; }
+.btn-outline:hover { border-color:var(--primary); color:var(--primary); }
 
-.cat-scores { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin: 20px 0; }
-.cat-score { background: var(--bg); border-radius: 10px; padding: 12px 16px; }
-.cat-score-header { display: flex; justify-content: space-between; font-size: 13px; font-weight: 600; margin-bottom: 6px; }
-.cat-bar { height: 5px; background: var(--border); border-radius: 3px; overflow: hidden; }
-.cat-bar-fill { height: 100%; border-radius: 3px; }
-
-.action-btns { display: flex; gap: 12px; justify-content: center; margin-top: 24px; flex-wrap: wrap; }
-.btn-outline {
-    padding: 12px 24px;
-    border: 2px solid var(--border);
-    border-radius: 12px;
-    background: transparent;
-    font-size: 14px;
-    font-weight: 600;
-    cursor: pointer;
-    color: var(--text);
-    transition: all 0.2s;
-}
-.btn-outline:hover { border-color: var(--primary); color: var(--primary); }
-
-/* Error */
-.error-msg { background: #fef2f2; color: var(--red); border-radius: 12px; padding: 16px; text-align: center; font-weight: 600; display: none; }
-.error-msg.active { display: block; }
+.error-msg { background:#fef2f2; color:var(--red); border-radius:12px; padding:16px; text-align:center; font-weight:600; display:none; }
+.error-msg.active { display:block; }
 </style>
 </head>
 <body>
 
 <div class="header">
-    <h1>QATest</h1>
-    <p>AI-powered end-to-end quality assurance testing. Enter a URL and get a comprehensive report in minutes.</p>
+    <h1>QATest <span class="version">v2</span></h1>
+    <p>AI-powered QA testing with user journey simulation and copywriting analysis. Enter a URL and get a comprehensive report.</p>
 </div>
 
 <div class="container">
 
-    <!-- INPUT FORM -->
     <div class="card" id="formCard">
         <div class="form-group">
             <label>Website URL</label>
@@ -239,15 +119,33 @@ input[type="number"]:focus { border-color: var(--primary); }
             </div>
         </div>
 
+        <!-- Journey Testing Toggle -->
+        <label class="journey-toggle" for="journeyToggle">
+            <input type="checkbox" id="journeyToggle" onchange="toggleJourneyFields()">
+            <span class="toggle-track"></span>
+            Enable User Journey Testing
+        </label>
+        <div class="journey-fields" id="journeyFields">
+            <div class="field">
+                <label>Test Email</label>
+                <input type="email" id="emailInput" placeholder="test@example.com">
+            </div>
+            <div class="field">
+                <label>Test Password</label>
+                <input type="password" id="passwordInput" placeholder="Test password">
+            </div>
+            <p class="journey-note">Credentials are used only to test login/signup flows. They are never stored or logged. For sites without auth, leave blank — forms like contact, search, and newsletter will still be tested.</p>
+        </div>
+
         <div class="options-row">
             <div class="form-group" style="flex:0 0 auto">
                 <label>Max Pages</label>
                 <input type="number" id="maxPages" value="10" min="1" max="50">
             </div>
             <div class="form-group" style="flex:1">
-                <label>Baseline (Run 2 — optional)</label>
+                <label>Baseline (Run 2)</label>
                 <div class="baseline-area" id="baselineArea" onclick="document.getElementById('baselineFile').click()">
-                    Drop or click to upload previous <strong>baseline.json</strong>
+                    Upload previous <strong>baseline.json</strong> for comparison
                 </div>
                 <input type="file" id="baselineFile" accept=".json" style="display:none">
             </div>
@@ -258,21 +156,20 @@ input[type="number"]:focus { border-color: var(--primary); }
         </div>
     </div>
 
-    <!-- PROGRESS -->
     <div class="card progress-area" id="progressArea">
         <div class="steps">
             <div class="step" id="step1">1. Crawl</div>
             <div class="step" id="step2">2. Analyse</div>
-            <div class="step" id="step3">3. Score</div>
-            <div class="step" id="step4">4. Report</div>
+            <div class="step" id="step3">3. Journeys</div>
+            <div class="step" id="step4">4. Copy</div>
+            <div class="step" id="step5">5. Score</div>
+            <div class="step" id="step6">6. Report</div>
         </div>
         <div class="log-box" id="logBox"></div>
     </div>
 
-    <!-- ERROR -->
     <div class="error-msg" id="errorMsg"></div>
 
-    <!-- RESULTS -->
     <div class="card results-area" id="resultsArea">
         <div class="score-reveal">
             <div class="score-circle" id="scoreCircle">—</div>
@@ -282,19 +179,23 @@ input[type="number"]:focus { border-color: var(--primary); }
         <div class="stats-row">
             <div class="stat">
                 <div class="stat-value" id="statPages">—</div>
-                <div class="stat-label">Pages Tested</div>
+                <div class="stat-label">Pages</div>
+            </div>
+            <div class="stat">
+                <div class="stat-value" id="statJourneys">—</div>
+                <div class="stat-label">Journeys</div>
             </div>
             <div class="stat">
                 <div class="stat-value" id="statIssues">—</div>
-                <div class="stat-label">Issues Found</div>
+                <div class="stat-label">Issues</div>
             </div>
         </div>
 
         <div class="cat-scores" id="catScores"></div>
 
         <div class="action-btns">
-            <a class="btn btn-primary" id="viewReportBtn" href="#" target="_blank">View Full Report</a>
-            <a class="btn-outline" id="downloadBaselineBtn" href="#" download="baseline.json">Download Baseline (for Run 2)</a>
+            <a class="btn btn-primary" id="viewReportBtn" href="#" target="_blank" style="text-decoration:none;color:white">View Full Report</a>
+            <a class="btn-outline" id="downloadBaselineBtn" href="#" download="baseline.json">Download Baseline</a>
             <button class="btn-outline" onclick="resetForm()">Test Another Site</button>
         </div>
     </div>
@@ -304,7 +205,10 @@ input[type="number"]:focus { border-color: var(--primary); }
 <script>
 let baselineJson = null;
 
-// Baseline file upload
+function toggleJourneyFields() {
+    document.getElementById('journeyFields').classList.toggle('active', document.getElementById('journeyToggle').checked);
+}
+
 document.getElementById('baselineFile').addEventListener('change', function(e) {
     const file = e.target.files[0];
     if (!file) return;
@@ -312,7 +216,7 @@ document.getElementById('baselineFile').addEventListener('change', function(e) {
     reader.onload = function(ev) {
         baselineJson = ev.target.result;
         const area = document.getElementById('baselineArea');
-        area.textContent = '✓ ' + file.name + ' loaded';
+        area.textContent = file.name + ' loaded';
         area.classList.add('has-file');
     };
     reader.readAsText(file);
@@ -327,9 +231,11 @@ function addLog(msg) {
     box.scrollTop = box.scrollHeight;
 }
 
-function setStep(n) {
-    for (let i = 1; i <= 4; i++) {
+function setStep(n, total) {
+    total = total || 6;
+    for (let i = 1; i <= total; i++) {
         const el = document.getElementById('step' + i);
+        if (!el) continue;
         el.classList.remove('active', 'done');
         if (i < n) el.classList.add('done');
         if (i === n) el.classList.add('active');
@@ -348,18 +254,20 @@ async function startTest() {
     if (!url) { document.getElementById('urlInput').focus(); return; }
 
     const maxPages = document.getElementById('maxPages').value;
+    const email = document.getElementById('emailInput').value.trim();
+    const password = document.getElementById('passwordInput').value;
 
-    // Show progress, hide form
     document.getElementById('startBtn').disabled = true;
     document.getElementById('progressArea').classList.add('active');
     document.getElementById('resultsArea').classList.remove('active');
     document.getElementById('errorMsg').classList.remove('active');
     document.getElementById('logBox').innerHTML = '';
     setStep(1);
-    addLog('Starting test for ' + url + '...');
+    addLog('Starting QA test for ' + url + '...');
 
-    // Start test
     const body = { url, max_pages: maxPages };
+    if (email) body.email = email;
+    if (password) body.password = password;
     if (baselineJson) body.baseline_json = baselineJson;
 
     let resp;
@@ -377,30 +285,25 @@ async function startTest() {
     const { task_id, error } = await resp.json();
     if (error) { showError(error); return; }
 
-    // Listen for progress via SSE
     const evtSource = new EventSource('/progress/' + task_id);
     evtSource.onmessage = function(event) {
         const data = JSON.parse(event.data);
-
         if (data.type === 'step') {
-            setStep(data.step);
+            setStep(data.step, data.total_steps);
             addLog(data.message);
         } else if (data.type === 'progress') {
             addLog(data.message);
         } else if (data.type === 'done') {
             evtSource.close();
-            setStep(5); // All done
-            addLog('✓ Report generated!');
+            setStep(7);
+            addLog('Report generated!');
             showResults(data);
         } else if (data.type === 'error') {
             evtSource.close();
             showError(data.message);
         }
     };
-
-    evtSource.onerror = function() {
-        evtSource.close();
-    };
+    evtSource.onerror = function() { evtSource.close(); };
 }
 
 function showError(msg) {
@@ -420,12 +323,16 @@ function showResults(data) {
     circle.style.color = scoreColor(sc);
 
     document.getElementById('statPages').textContent = data.pages_tested;
+    document.getElementById('statJourneys').textContent = data.journeys_tested || 0;
     document.getElementById('statIssues').textContent = data.total_issues;
 
-    // Category scores
     const catEl = document.getElementById('catScores');
     catEl.innerHTML = '';
-    const labels = {functional:'Functional',security:'Security',usability:'Usability',visual:'Visual',accessibility:'Accessibility',content:'Content'};
+    const labels = {
+        functional:'Functional', security:'Security', usability:'Usability',
+        visual:'Visual', accessibility:'Accessibility', content:'Content',
+        copywriting:'Copywriting', journey:'Journeys'
+    };
     for (const [cat, score] of Object.entries(data.categories)) {
         const c = scoreColor(score);
         catEl.innerHTML += `
@@ -451,11 +358,10 @@ function resetForm() {
     document.getElementById('urlInput').focus();
     baselineJson = null;
     const area = document.getElementById('baselineArea');
-    area.innerHTML = 'Drop or click to upload previous <strong>baseline.json</strong>';
+    area.innerHTML = 'Upload previous <strong>baseline.json</strong> for comparison';
     area.classList.remove('has-file');
 }
 
-// Enter key to start
 document.getElementById('urlInput').addEventListener('keydown', function(e) {
     if (e.key === 'Enter') startTest();
 });

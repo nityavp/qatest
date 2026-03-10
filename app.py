@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 """
-QATest — Web UI for AI-powered QA testing.
+QATest v2 — Web UI for AI-powered QA testing with user journey and copywriting analysis.
 
 Usage:
     python3 app.py
-    Then open http://localhost:5000
+    Then open http://localhost:8080
 """
 
 import asyncio
@@ -22,16 +22,18 @@ load_dotenv()
 
 from crawler import crawl_site
 from analyzer import run_analysis
+from journey import run_journeys
+from copywriter import run_copy_analysis
 from report import calculate_scores, generate_report
+from models import Finding
 
 app = Flask(__name__)
 
 REPORTS_DIR = os.path.join(os.path.dirname(__file__), "reports")
 os.makedirs(REPORTS_DIR, exist_ok=True)
 
-# In-memory state for running tests
-progress_queues: dict[str, queue.Queue] = {}
-test_results: dict[str, dict] = {}
+progress_queues: dict = {}
+test_results: dict = {}
 
 
 @app.route("/")
@@ -49,14 +51,16 @@ def start_test():
         url = "https://" + url
 
     max_pages = int(data.get("max_pages", 10))
-    baseline_data = data.get("baseline_json")  # Optional JSON string
+    baseline_data = data.get("baseline_json")
+    email = data.get("email", "").strip()
+    password = data.get("password", "").strip()
 
     task_id = uuid.uuid4().hex[:10]
     progress_queues[task_id] = queue.Queue()
 
     thread = threading.Thread(
         target=_run_test_thread,
-        args=(task_id, url, max_pages, baseline_data),
+        args=(task_id, url, max_pages, baseline_data, email, password),
         daemon=True,
     )
     thread.start()
@@ -66,23 +70,18 @@ def start_test():
 
 @app.route("/progress/<task_id>")
 def progress(task_id):
-    """Server-Sent Events endpoint for real-time progress."""
-
     def generate():
         q = progress_queues.get(task_id)
         if not q:
             yield f"data: {json.dumps({'type': 'error', 'message': 'Unknown task'})}\n\n"
             return
-
         while True:
             try:
                 msg = q.get(timeout=120)
             except queue.Empty:
                 yield f"data: {json.dumps({'type': 'heartbeat'})}\n\n"
                 continue
-
             yield f"data: {json.dumps(msg)}\n\n"
-
             if msg.get("type") in ("done", "error"):
                 break
 
@@ -94,10 +93,7 @@ def serve_report(filename):
     return send_from_directory(REPORTS_DIR, filename)
 
 
-# ── Background test runner ───────────────────────────────────────────
-
-
-def _run_test_thread(task_id, url, max_pages, baseline_json_str):
+def _run_test_thread(task_id, url, max_pages, baseline_json_str, email, password):
     q = progress_queues[task_id]
 
     def on_progress(msg):
@@ -107,33 +103,82 @@ def _run_test_thread(task_id, url, max_pages, baseline_json_str):
     asyncio.set_event_loop(loop)
 
     try:
+        api_key = os.environ.get("GEMINI_API_KEY", "")
+
         # Step 1: Crawl
-        q.put({"type": "step", "step": 1, "message": "Crawling site..."})
+        q.put({"type": "step", "step": 1, "total_steps": 6, "message": "Crawling site..."})
         site_data = loop.run_until_complete(
             crawl_site(url, max_pages=max_pages, on_progress=on_progress)
         )
-
         if not site_data.pages:
             q.put({"type": "error", "message": "Could not crawl any pages. Check the URL."})
             return
-
         q.put({"type": "progress", "message": f"Crawled {len(site_data.pages)} page(s)"})
 
-        # Step 2: Analyse
-        q.put({"type": "step", "step": 2, "message": "Running analysis..."})
-        api_key = os.environ.get("GEMINI_API_KEY", "")
+        # Step 2: Automated + AI analysis
+        q.put({"type": "step", "step": 2, "total_steps": 6, "message": "Running analysis..."})
         findings = loop.run_until_complete(
             run_analysis(site_data, api_key=api_key, on_progress=on_progress)
         )
+        q.put({"type": "progress", "message": f"Found {len(findings)} issue(s) so far"})
 
-        q.put({"type": "progress", "message": f"Found {len(findings)} issue(s)"})
+        # Step 3: User journey tests
+        q.put({"type": "step", "step": 3, "total_steps": 6, "message": "Testing user journeys..."})
+        journey_results = []
+        if api_key:
+            journey_results = loop.run_until_complete(
+                run_journeys(site_data, api_key, email, password, on_progress)
+            )
+            # Convert journey failures to findings
+            for jr in journey_results:
+                if not jr.overall_success:
+                    failed_step = next((s for s in jr.steps if not s.success), None)
+                    findings.append(Finding(
+                        id=f"journey-fail-{jr.journey_type}",
+                        category="journey",
+                        severity="critical",
+                        title=f"{jr.journey_name} — Journey Failed",
+                        description=f"The {jr.journey_name} flow failed at step {failed_step.step_number}: {failed_step.error_message}" if failed_step else "Journey could not be completed.",
+                        location=jr.start_url,
+                        impact=f"Users cannot complete the {jr.journey_type} flow.",
+                        suggestion="Fix the failing step and re-test.",
+                        source="journey",
+                    ))
+                else:
+                    # Journey passed — add as positive signal (low severity = informational)
+                    findings.append(Finding(
+                        id=f"journey-pass-{jr.journey_type}",
+                        category="journey",
+                        severity="low",
+                        title=f"{jr.journey_name} — Journey Passed",
+                        description=f"The {jr.journey_name} flow completed successfully in {len(jr.steps)} steps ({jr.duration_ms:.0f}ms).",
+                        location=jr.start_url,
+                        impact="",
+                        suggestion="",
+                        source="journey",
+                    ))
+        else:
+            q.put({"type": "progress", "message": "  Skipping journeys (no API key)"})
 
-        # Step 3: Score
-        q.put({"type": "step", "step": 3, "message": "Calculating scores..."})
-        scores = calculate_scores(findings)
+        # Step 4: Copywriting analysis
+        q.put({"type": "step", "step": 4, "total_steps": 6, "message": "Analyzing copywriting..."})
+        if api_key:
+            copy_findings = loop.run_until_complete(
+                run_copy_analysis(site_data, journey_results, api_key, on_progress)
+            )
+            findings.extend(copy_findings)
+            q.put({"type": "progress", "message": f"Copywriting: found {len(copy_findings)} issue(s)"})
+        else:
+            q.put({"type": "progress", "message": "  Skipping copywriting (no API key)"})
 
-        # Step 4: Report
-        q.put({"type": "step", "step": 4, "message": "Generating report..."})
+        # Step 5: Score
+        q.put({"type": "step", "step": 5, "total_steps": 6, "message": "Calculating scores..."})
+        # Remove "passed journey" findings from scoring (they're informational)
+        scoring_findings = [f for f in findings if not f.id.startswith("journey-pass-")]
+        scores = calculate_scores(scoring_findings)
+
+        # Step 6: Report
+        q.put({"type": "step", "step": 6, "total_steps": 6, "message": "Generating report..."})
 
         baseline = None
         if baseline_json_str:
@@ -143,27 +188,18 @@ def _run_test_thread(task_id, url, max_pages, baseline_json_str):
                 pass
 
         output_dir = os.path.join(REPORTS_DIR, task_id)
-        report_path = generate_report(site_data, findings, scores, output_dir, baseline)
+        generate_report(site_data, findings, scores, output_dir, baseline, journey_results)
 
-        # Store result
-        test_results[task_id] = {
+        q.put({
+            "type": "done",
+            "report_url": f"/reports/{task_id}/report.html",
+            "baseline_url": f"/reports/{task_id}/baseline.json",
             "score": scores["overall"],
             "categories": {k: v["score"] for k, v in scores["categories"].items()},
-            "total_issues": len(findings),
+            "total_issues": len(scoring_findings),
             "pages_tested": len(site_data.pages),
-        }
-
-        q.put(
-            {
-                "type": "done",
-                "report_url": f"/reports/{task_id}/report.html",
-                "baseline_url": f"/reports/{task_id}/baseline.json",
-                "score": scores["overall"],
-                "categories": {k: v["score"] for k, v in scores["categories"].items()},
-                "total_issues": len(findings),
-                "pages_tested": len(site_data.pages),
-            }
-        )
+            "journeys_tested": len(journey_results),
+        })
 
     except Exception as e:
         q.put({"type": "error", "message": str(e)})
@@ -173,7 +209,7 @@ def _run_test_thread(task_id, url, max_pages, baseline_json_str):
 
 if __name__ == "__main__":
     print()
-    print("  QATest — AI-Powered QA Testing")
+    print("  QATest v2 — AI-Powered QA Testing")
     print("  Open http://localhost:8080")
     print()
     app.run(debug=False, host="0.0.0.0", port=8080, threaded=True)

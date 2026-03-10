@@ -3,17 +3,19 @@ import base64
 import json
 import os
 from datetime import datetime
-from models import Finding, SiteData, DEVICES
+from models import Finding, SiteData, JourneyResult, DEVICES
 
 # ── Scoring ──────────────────────────────────────────────────────────
 
 CATEGORY_WEIGHTS = {
-    "functional": 0.25,
-    "security": 0.20,
-    "usability": 0.20,
-    "visual": 0.15,
-    "accessibility": 0.15,
+    "functional": 0.18,
+    "security": 0.15,
+    "usability": 0.15,
+    "visual": 0.12,
+    "accessibility": 0.12,
     "content": 0.05,
+    "copywriting": 0.10,
+    "journey": 0.13,
 }
 
 SEVERITY_PENALTY = {
@@ -37,28 +39,20 @@ def calculate_scores(findings: list[Finding]) -> dict:
         counts = category_counts[cat]
         penalty = sum(counts[s] * SEVERITY_PENALTY[s] for s in SEVERITY_PENALTY)
         score = max(0, 100 - penalty)
-        category_scores[cat] = {
-            "score": score,
-            "weight": weight,
-            "counts": counts,
-        }
+        category_scores[cat] = {"score": score, "weight": weight, "counts": counts}
 
     overall = sum(
         category_scores[cat]["score"] * category_scores[cat]["weight"]
         for cat in category_scores
     )
     overall = round(overall)
-
     return {"overall": overall, "categories": category_scores}
 
 
 def _score_color(score):
-    if score >= 80:
-        return "#22c55e"
-    if score >= 60:
-        return "#eab308"
-    if score >= 40:
-        return "#f97316"
+    if score >= 80: return "#22c55e"
+    if score >= 60: return "#eab308"
+    if score >= 40: return "#f97316"
     return "#ef4444"
 
 
@@ -71,17 +65,21 @@ def _severity_badge(sev):
 def _source_badge(source):
     if source == "ai":
         return '<span style="display:inline-block;padding:2px 8px;border-radius:9999px;font-size:10px;font-weight:600;background:#f0f9ff;color:#0369a1;margin-left:6px">AI</span>'
+    if source == "journey":
+        return '<span style="display:inline-block;padding:2px 8px;border-radius:9999px;font-size:10px;font-weight:600;background:#fdf4ff;color:#9333ea;margin-left:6px">JOURNEY</span>'
     return '<span style="display:inline-block;padding:2px 8px;border-radius:9999px;font-size:10px;font-weight:600;background:#f1f5f9;color:#64748b;margin-left:6px">AUTO</span>'
 
 
 def _category_icon(cat):
     icons = {
-        "functional": "&#9881;",   # ⚙
-        "usability": "&#128100;",  # 👤
-        "visual": "&#127912;",     # 🎨
-        "security": "&#128274;",   # 🔒
-        "accessibility": "&#9855;",# ♿
-        "content": "&#128221;",    # 📝
+        "functional": "&#9881;",
+        "usability": "&#128100;",
+        "visual": "&#127912;",
+        "security": "&#128274;",
+        "accessibility": "&#9855;",
+        "content": "&#128221;",
+        "copywriting": "&#9997;",
+        "journey": "&#128694;",
     }
     return icons.get(cat, "&#10003;")
 
@@ -98,12 +96,13 @@ def generate_report(
     scores: dict,
     output_dir: str,
     baseline: dict | None = None,
+    journey_results: list[JourneyResult] | None = None,
 ):
     os.makedirs(output_dir, exist_ok=True)
     screenshots_dir = os.path.join(output_dir, "screenshots")
     os.makedirs(screenshots_dir, exist_ok=True)
 
-    # Save screenshots as files and build references
+    # Save page screenshots
     page_screenshots = []
     for i, page in enumerate(site_data.pages):
         device_paths = {}
@@ -114,9 +113,21 @@ def generate_report(
                 with open(os.path.join(output_dir, path), "wb") as f:
                     f.write(screenshot)
                 device_paths[device_name] = path
-        page_screenshots.append(
-            {"url": page.url, "title": page.title, "devices": device_paths}
-        )
+        page_screenshots.append({"url": page.url, "title": page.title, "devices": device_paths})
+
+    # Save journey screenshots
+    journey_screenshot_paths = []
+    for jr in (journey_results or []):
+        jr_paths = []
+        for step in jr.steps:
+            if step.screenshot:
+                path = f"screenshots/journey_{jr.journey_type}_step_{step.step_number}.png"
+                with open(os.path.join(output_dir, path), "wb") as f:
+                    f.write(step.screenshot)
+                jr_paths.append(path)
+            else:
+                jr_paths.append("")
+        journey_screenshot_paths.append(jr_paths)
 
     # Save baseline JSON
     baseline_data = {
@@ -126,11 +137,12 @@ def generate_report(
         "category_scores": {k: v["score"] for k, v in scores["categories"].items()},
         "findings": [f.to_dict() for f in findings],
         "pages_crawled": len(site_data.pages),
+        "journeys_tested": len(journey_results or []),
     }
     with open(os.path.join(output_dir, "baseline.json"), "w") as f:
         json.dump(baseline_data, f, indent=2)
 
-    # Build delta info if baseline provided
+    # Delta
     delta = None
     if baseline:
         old_score = baseline.get("overall_score", 0)
@@ -139,41 +151,93 @@ def generate_report(
         resolved = old_ids - new_ids
         still_open = old_ids & new_ids
         new_issues = new_ids - old_ids
-
-        # Find findings by id
         old_findings_map = {f["id"]: f for f in baseline.get("findings", [])}
-
         delta = {
-            "old_score": old_score,
-            "new_score": scores["overall"],
+            "old_score": old_score, "new_score": scores["overall"],
             "delta_score": scores["overall"] - old_score,
-            "resolved_count": len(resolved),
-            "still_open_count": len(still_open),
-            "new_count": len(new_issues),
+            "resolved_count": len(resolved), "still_open_count": len(still_open), "new_count": len(new_issues),
             "resolved": [old_findings_map[fid] for fid in resolved if fid in old_findings_map],
             "new_issues": [f for f in findings if f.id in new_issues],
         }
 
-    # Sort findings: critical first
     severity_order = {"critical": 0, "high": 1, "medium": 2, "low": 3}
     findings_sorted = sorted(findings, key=lambda f: severity_order.get(f.severity, 9))
-
-    # Group by category
     by_category = {}
     for f in findings_sorted:
         by_category.setdefault(f.category, []).append(f)
 
-    # ── Build HTML ───────────────────────────────────────────────
-    html = _build_html(site_data, findings_sorted, by_category, scores, page_screenshots, delta)
+    html = _build_html(
+        site_data, findings_sorted, by_category, scores,
+        page_screenshots, delta, journey_results or [], journey_screenshot_paths,
+    )
 
     report_path = os.path.join(output_dir, "report.html")
     with open(report_path, "w") as f:
         f.write(html)
-
     return report_path
 
 
-def _build_html(site_data, findings_sorted, by_category, scores, page_screenshots, delta):
+# ── Journey HTML builder ─────────────────────────────────────────────
+
+def _build_journey_html(journey_results, journey_screenshot_paths):
+    if not journey_results:
+        return ""
+
+    html = '<h2 style="font-size:18px;margin:32px 0 16px">&#128694; User Journey Tests</h2>'
+
+    for jr_idx, jr in enumerate(journey_results):
+        status_color = "#22c55e" if jr.overall_success else "#ef4444"
+        status_label = "PASSED" if jr.overall_success else "FAILED"
+        paths = journey_screenshot_paths[jr_idx] if jr_idx < len(journey_screenshot_paths) else []
+
+        html += f"""
+        <div style="background:white;border-radius:12px;box-shadow:0 1px 3px rgba(0,0,0,.08);padding:24px;margin-bottom:20px;border-left:4px solid {status_color}">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+                <div>
+                    <h3 style="margin:0;font-size:16px">{jr.journey_name}</h3>
+                    <p style="margin:0;font-size:12px;color:#94a3b8">{jr.start_url} &middot; {len(jr.steps)} steps &middot; {jr.duration_ms:.0f}ms</p>
+                </div>
+                <span style="display:inline-block;padding:4px 14px;border-radius:9999px;font-size:12px;font-weight:700;background:{status_color}20;color:{status_color}">{status_label}</span>
+            </div>
+
+            <div style="display:flex;gap:0;overflow-x:auto;padding-bottom:8px">"""
+
+        for step_idx, step in enumerate(jr.steps):
+            step_color = "#22c55e" if step.success else "#ef4444"
+            screenshot_path = paths[step_idx] if step_idx < len(paths) else ""
+            # Mask password values in display
+            display_value = step.value if "password" not in step.selector.lower() else "********"
+            action_label = step.description or f"{step.action}: {display_value}"
+
+            connector = ""
+            if step_idx < len(jr.steps) - 1:
+                connector = '<div style="flex-shrink:0;display:flex;align-items:center;padding:0 4px;color:#cbd5e1;font-size:20px">&#8594;</div>'
+
+            html += f"""
+                <div style="flex:0 0 220px;min-width:220px">
+                    <div style="text-align:center;margin-bottom:6px">
+                        <span style="display:inline-block;width:24px;height:24px;border-radius:50%;background:{step_color};color:white;font-size:12px;line-height:24px;font-weight:700">{step.step_number}</span>
+                    </div>
+                    <div style="font-size:11px;color:#64748b;text-align:center;margin-bottom:6px;height:32px;overflow:hidden">{action_label[:60]}</div>"""
+
+            if screenshot_path:
+                html += f'<img src="{screenshot_path}" style="width:100%;border:1px solid #e2e8f0;border-radius:6px" loading="lazy">'
+
+            if not step.success:
+                html += f'<div style="font-size:10px;color:#ef4444;margin-top:4px;text-align:center">{step.error_message[:80]}</div>'
+
+            html += f"</div>{connector}"
+
+        html += """
+            </div>
+        </div>"""
+
+    return html
+
+
+# ── Main HTML builder ────────────────────────────────────────────────
+
+def _build_html(site_data, findings_sorted, by_category, scores, page_screenshots, delta, journey_results, journey_screenshot_paths):
     overall = scores["overall"]
     sc = _score_color(overall)
     total = len(findings_sorted)
@@ -183,8 +247,9 @@ def _build_html(site_data, findings_sorted, by_category, scores, page_screenshot
     low_count = sum(1 for f in findings_sorted if f.severity == "low")
     run_label = "Verification Report (Run 2)" if delta else "Baseline Report (Run 1)"
     now = datetime.now().strftime("%B %d, %Y at %I:%M %p")
+    journeys_tested = len(journey_results)
 
-    # Delta header section
+    # Delta HTML
     delta_html = ""
     if delta:
         d = delta
@@ -195,12 +260,12 @@ def _build_html(site_data, findings_sorted, by_category, scores, page_screenshot
             <h2 style="margin:0 0 16px;font-size:20px;color:#166534">Comparison with Previous Run</h2>
             <div style="display:flex;gap:32px;flex-wrap:wrap;align-items:center">
                 <div style="text-align:center">
-                    <div style="font-size:14px;color:#64748b">Previous Score</div>
+                    <div style="font-size:14px;color:#64748b">Previous</div>
                     <div style="font-size:36px;font-weight:700;color:#64748b">{d['old_score']}</div>
                 </div>
                 <div style="font-size:32px;color:{delta_color}">{arrow}</div>
                 <div style="text-align:center">
-                    <div style="font-size:14px;color:#64748b">Current Score</div>
+                    <div style="font-size:14px;color:#64748b">Current</div>
                     <div style="font-size:36px;font-weight:700;color:{sc}">{d['new_score']}</div>
                 </div>
                 <div style="text-align:center;padding:12px 24px;border-radius:8px;background:white">
@@ -214,16 +279,12 @@ def _build_html(site_data, findings_sorted, by_category, scores, page_screenshot
                 <div><span style="font-size:24px;font-weight:700;color:#f97316">{d['new_count']}</span> <span style="color:#64748b">New / Regression</span></div>
             </div>
         </div>"""
-
-        # Resolved issues list
         if d["resolved"]:
             delta_html += '<div style="background:white;border-radius:12px;box-shadow:0 1px 3px rgba(0,0,0,.08);padding:24px;margin-bottom:24px">'
             delta_html += '<h3 style="margin:0 0 16px;color:#166534">Resolved Issues</h3>'
             for rf in d["resolved"]:
                 delta_html += f'<div style="padding:8px 0;border-bottom:1px solid #f1f5f9;color:#64748b;text-decoration:line-through">{rf.get("title","")} <span style="font-size:12px">({rf.get("category","")})</span></div>'
             delta_html += "</div>"
-
-        # New/regression issues
         if d["new_issues"]:
             delta_html += '<div style="background:white;border-radius:12px;box-shadow:0 1px 3px rgba(0,0,0,.08);padding:24px;margin-bottom:24px">'
             delta_html += '<h3 style="margin:0 0 16px;color:#c2410c">New / Regression Issues</h3>'
@@ -241,8 +302,8 @@ def _build_html(site_data, findings_sorted, by_category, scores, page_screenshot
         cat_cards += f"""
         <div style="background:white;border-radius:12px;padding:20px;box-shadow:0 1px 3px rgba(0,0,0,.08)">
             <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
-                <span style="font-size:14px;font-weight:600">{_category_icon(cat)} {_category_label(cat)}</span>
-                <span style="font-size:24px;font-weight:700;color:{c}">{cs['score']}</span>
+                <span style="font-size:13px;font-weight:600">{_category_icon(cat)} {_category_label(cat)}</span>
+                <span style="font-size:22px;font-weight:700;color:{c}">{cs['score']}</span>
             </div>
             <div style="height:6px;background:#e2e8f0;border-radius:3px;overflow:hidden">
                 <div style="height:100%;width:{cs['score']}%;background:{c};border-radius:3px"></div>
@@ -261,14 +322,12 @@ def _build_html(site_data, findings_sorted, by_category, scores, page_screenshot
                 <p style="color:#22c55e;margin:12px 0 0;font-size:14px">&#10003; No issues found</p>
             </div>"""
             continue
-
         items = ""
         for f in cat_findings:
             items += f"""
             <div style="border-bottom:1px solid #f1f5f9;padding:16px 0">
                 <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
-                    {_severity_badge(f.severity)}
-                    {_source_badge(f.source)}
+                    {_severity_badge(f.severity)} {_source_badge(f.source)}
                     <strong style="font-size:14px">{f.title}</strong>
                 </div>
                 <p style="margin:0 0 6px;font-size:13px;color:#475569">{f.description}</p>
@@ -278,19 +337,19 @@ def _build_html(site_data, findings_sorted, by_category, scores, page_screenshot
                     <strong>Suggested Fix:</strong> {f.suggestion}
                 </div>
             </div>"""
-
         issues_html += f"""
         <div style="background:white;border-radius:12px;box-shadow:0 1px 3px rgba(0,0,0,.08);padding:24px;margin-bottom:16px">
             <h3 style="margin:0 0 4px;font-size:16px">{_category_icon(cat)} {_category_label(cat)} <span style="font-weight:400;font-size:13px;color:#94a3b8">({len(cat_findings)} issue{'s' if len(cat_findings)!=1 else ''})</span></h3>
             {items}
         </div>"""
 
-    # Page screenshots gallery — multi-device comparison
+    # Journey section
+    journey_html = _build_journey_html(journey_results, journey_screenshot_paths)
+
+    # Page screenshots gallery
     device_flex = {
-        "desktop": "flex:4;min-width:400px",
-        "laptop": "flex:3;min-width:320px",
-        "tablet": "flex:2;min-width:200px",
-        "mobile": "flex:1;min-width:120px;max-width:200px",
+        "desktop": "flex:4;min-width:400px", "laptop": "flex:3;min-width:320px",
+        "tablet": "flex:2;min-width:200px", "mobile": "flex:1;min-width:120px;max-width:200px",
     }
     gallery = ""
     for ps in page_screenshots:
@@ -305,14 +364,11 @@ def _build_html(site_data, findings_sorted, by_category, scores, page_screenshot
                     <p style="font-size:11px;color:#94a3b8;margin:0 0 4px;font-weight:600">{label}</p>
                     <img src="{path}" style="width:100%;border:1px solid #e2e8f0;border-radius:8px" loading="lazy">
                 </div>"""
-
         gallery += f"""
         <div style="background:white;border-radius:12px;box-shadow:0 1px 3px rgba(0,0,0,.08);padding:20px;margin-bottom:16px">
             <h4 style="margin:0 0 4px;font-size:14px">{ps['title'] or ps['url']}</h4>
             <p style="margin:0 0 12px;font-size:12px;color:#94a3b8">{ps['url']}</p>
-            <div style="display:flex;gap:16px;flex-wrap:wrap;align-items:flex-start">
-                {device_images}
-            </div>
+            <div style="display:flex;gap:16px;flex-wrap:wrap;align-items:flex-start">{device_images}</div>
         </div>"""
 
     html = f"""<!DOCTYPE html>
@@ -325,22 +381,18 @@ def _build_html(site_data, findings_sorted, by_category, scores, page_screenshot
 * {{ margin:0; padding:0; box-sizing:border-box; }}
 body {{ font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif; background:#f1f5f9; color:#1e293b; line-height:1.6; }}
 a {{ color:#2563eb; text-decoration:none; }}
-@media print {{
-    body {{ background:white; }}
-    .no-print {{ display:none !important; }}
-}}
+@media print {{ body {{ background:white; }} .no-print {{ display:none !important; }} }}
 </style>
 </head>
 <body>
 
-<!-- HEADER -->
 <div style="background:linear-gradient(135deg,#0f172a 0%,#1e3a5f 100%);color:white;padding:40px 48px">
     <div style="max-width:1100px;margin:0 auto;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:24px">
         <div>
             <div style="font-size:12px;text-transform:uppercase;letter-spacing:2px;opacity:0.7;margin-bottom:4px">{run_label}</div>
             <h1 style="font-size:28px;font-weight:700;margin-bottom:4px">QA Test Report</h1>
             <p style="font-size:14px;opacity:0.8">{site_data.base_url}</p>
-            <p style="font-size:12px;opacity:0.6">{now} &middot; {len(site_data.pages)} page(s) tested</p>
+            <p style="font-size:12px;opacity:0.6">{now} &middot; {len(site_data.pages)} page(s) &middot; {journeys_tested} journey(s) tested</p>
         </div>
         <div style="text-align:center">
             <div style="width:120px;height:120px;border-radius:50%;border:6px solid {sc};display:flex;align-items:center;justify-content:center;background:rgba(255,255,255,0.1)">
@@ -352,18 +404,15 @@ a {{ color:#2563eb; text-decoration:none; }}
 </div>
 
 <div style="max-width:1100px;margin:0 auto;padding:32px 24px">
-
-    <!-- DELTA (Run 2 only) -->
     {delta_html}
 
-    <!-- EXECUTIVE SUMMARY -->
     <div style="background:white;border-radius:12px;box-shadow:0 1px 3px rgba(0,0,0,.08);padding:24px;margin-bottom:24px">
         <h2 style="font-size:18px;margin-bottom:12px">Executive Summary</h2>
         <div style="display:flex;gap:24px;flex-wrap:wrap">
             <div style="flex:1;min-width:200px">
                 <p style="font-size:14px;color:#475569">
-                    We tested <strong>{len(site_data.pages)} page(s)</strong> on <strong>{site_data.base_url}</strong> and found
-                    <strong>{total} issue(s)</strong> across {len(by_category)} categories.
+                    We tested <strong>{len(site_data.pages)} page(s)</strong> and <strong>{journeys_tested} user journey(s)</strong>
+                    on <strong>{site_data.base_url}</strong>, finding <strong>{total} issue(s)</strong> across {len(by_category)} categories.
                 </p>
             </div>
             <div style="display:flex;gap:16px;flex-wrap:wrap;align-items:center">
@@ -387,29 +436,27 @@ a {{ color:#2563eb; text-decoration:none; }}
         </div>
     </div>
 
-    <!-- CATEGORY SCORES -->
-    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:16px;margin-bottom:32px">
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;margin-bottom:32px">
         {cat_cards}
     </div>
 
-    <!-- ISSUES BY CATEGORY -->
+    {journey_html}
+
     <h2 style="font-size:18px;margin-bottom:16px">Detailed Findings</h2>
     {issues_html}
 
-    <!-- SCREENSHOTS -->
     <h2 style="font-size:18px;margin:32px 0 16px">Page Screenshots</h2>
     {gallery}
 
-    <!-- DISCLAIMER -->
     <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;padding:20px;margin-top:32px;font-size:12px;color:#94a3b8">
         <strong>Disclaimer:</strong> This report provides automated quality-assurance testing including surface-level security checks.
         The security section checks for common misconfigurations (missing headers, HTTPS, etc.) and does <strong>not</strong> replace a
         formal penetration test or security audit. Visual and usability assessments are AI-assisted and may include subjective observations.
-        No credentials were used during testing — only publicly accessible pages were evaluated.
+        User journey tests simulate real user interactions; credentials provided were used only during testing and are not stored.
     </div>
 
     <div style="text-align:center;margin-top:32px;font-size:12px;color:#cbd5e1">
-        Generated by QATest &middot; {now}
+        Generated by QATest v2 &middot; {now}
     </div>
 </div>
 

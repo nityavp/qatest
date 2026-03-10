@@ -138,19 +138,27 @@ async def _collect_page_data(contexts: dict, url: str, base_domain: str) -> Page
         base_domain,
     )
 
-    # Extract forms
+    # Extract forms (with buttons for journey detection)
     forms = await desktop_page.evaluate(
         """() => {
             return [...document.querySelectorAll('form')].slice(0, 20).map(f => ({
                 action: f.action,
                 method: f.method,
                 id: f.id || '',
+                className: f.className || '',
                 fields: [...f.querySelectorAll('input,select,textarea')].slice(0, 30).map(i => ({
                     type: i.type || i.tagName.toLowerCase(),
                     name: i.name || '',
                     required: i.required,
                     placeholder: i.placeholder || '',
                     id: i.id || '',
+                    className: i.className || '',
+                })),
+                buttons: [...f.querySelectorAll('button,input[type=submit],input[type=button]')].map(b => ({
+                    text: (b.textContent || b.value || '').trim(),
+                    type: b.type || 'button',
+                    id: b.id || '',
+                    className: b.className || '',
                 }))
             }));
         }"""
@@ -165,6 +173,31 @@ async def _collect_page_data(contexts: dict, url: str, base_domain: str) -> Page
                 width: i.naturalWidth,
                 height: i.naturalHeight,
             }));
+        }"""
+    )
+
+    # Extract visible text for copywriting analysis
+    visible_text = await desktop_page.evaluate(
+        """() => (document.body.innerText || '').substring(0, 8000)"""
+    )
+
+    # Extract CTA elements (buttons + prominent links)
+    cta_elements = await desktop_page.evaluate(
+        """() => {
+            const ctas = [];
+            document.querySelectorAll('button, a.btn, [role=button], input[type=submit], a[class*=cta], a[class*=button]').forEach(el => {
+                const text = (el.textContent || el.value || '').trim();
+                if (text && text.length < 100) {
+                    ctas.push({
+                        text: text,
+                        tag: el.tagName.toLowerCase(),
+                        href: el.href || '',
+                        id: el.id || '',
+                        className: el.className || '',
+                    });
+                }
+            });
+            return ctas.slice(0, 30);
         }"""
     )
 
@@ -228,4 +261,6 @@ async def _collect_page_data(contexts: dict, url: str, base_domain: str) -> Page
         forms=forms,
         images=images,
         load_time_ms=load_time,
+        visible_text=visible_text,
+        cta_elements=cta_elements,
     )
